@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model TechnicalService {
+  id                    Int       @id @default(autoincrement())
+  operatingPersonnel    String?   @map("operating_personnel")
+  invoiceDate          DateTime? @map("invoice_date")
+  brand                String?
+  businessName         String?   @map("business_name")
+  deviceName           String?   @map("device_name")
+  model                String?
+  deviceSerial         String?   @map("device_serial")
+  serviceEntryDate     DateTime? @map("service_entry_date")
+  serviceExitDate      DateTime? @map("service_exit_date")
+  deviceProblem        String?   @map("device_problem")
+  problemDescription   String?   @map("problem_description")
+  performedAction      String?   @map("performed_action")
+  serviceCost          String?   @map("service_cost")
+  customerCost         String?   @map("customer_cost")
+  approvedBy           String?   @map("approved_by")
+  connectWritten       String?   @map("connect_written")
+  vendorName           String?   @map("vendor_name")
+  isAtVendor           Boolean   @default(false) @map("is_at_vendor")
+  vendorEntryDate      DateTime? @map("vendor_entry_date")
+  vendorExitDate       DateTime? @map("vendor_exit_date")
+  vendorStatus         VendorStatus @default(NOT_AT_VENDOR) @map("vendor_status")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  @@map("technical_services")
+}
+
+model VendorTracking {
+  id                    Int       @id @default(autoincrement())
+  vendorName           String    @map("vendor_name")
+  deviceName           String?   @map("device_name")
+  deviceSerial         String?   @map("device_serial")
+  businessName         String?   @map("business_name")
+  entryDate            DateTime? @map("entry_date")
+  exitDate             DateTime? @map("exit_date")
+  problemDescription   String?   @map("problem_description")
+  vendorAction         String?   @map("vendor_action")
+  cost                 String?
+  status               VendorStatus @default(AT_VENDOR)
+  notes                String?
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  @@map("vendor_tracking")
+}
+
+model Vendor {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  type        VendorType
+  contact     String?
+  phone       String?
+  email       String?
+  address     String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("vendors")
+}
+
+model Device {
+  id           Int      @id @default(autoincrement())
+  name         String
+  brand        String?
+  model        String?
+  serialNumber String?  @unique @map("serial_number")
+  status       DeviceStatus @default(ACTIVE)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("devices")
+}
+
+model Business {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  contact   String?
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("businesses")
+}
+
+model Personnel {
+  id        Int      @id @default(autoincrement())
+  name      String
+  role      String?
+  phone     String?
+  email     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("personnel")
+}
+
+enum DeviceStatus {
+  ACTIVE
+  IN_SERVICE
+  RETIRED
+  LOST
+}
+
+enum VendorStatus {
+  NOT_AT_VENDOR
+  AT_VENDOR
+  COMPLETED_AT_VENDOR
+  RETURNED_FROM_VENDOR
+}
+
+enum VendorType {
+  REPAIR_SERVICE
+  SUPPLIER
+  MAINTENANCE
+  WARRANTY
+}
