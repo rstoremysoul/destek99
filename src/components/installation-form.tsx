@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CalendarIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -89,249 +88,239 @@ export function InstallationForm({ onSubmit, onCancel, initialData }: Installati
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Yeni Kurulum Formu</CardTitle>
-        <CardDescription>
-          Kurulum bilgilerini girin
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Sol Kolon */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="formNumber">Form Numarası *</Label>
-                <Input
-                  id="formNumber"
-                  value={formData.formNumber}
-                  onChange={(e) => handleInputChange('formNumber', e.target.value)}
-                  placeholder="KF-2024-001"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Firma Adı *</Label>
-                <Input
-                  id="companyName"
-                  value={formData.companyName}
-                  onChange={(e) => handleInputChange('companyName', e.target.value)}
-                  placeholder="Firma adını girin"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="customerName">Müşteri Adı *</Label>
-                <Input
-                  id="customerName"
-                  value={formData.customerName}
-                  onChange={(e) => handleInputChange('customerName', e.target.value)}
-                  placeholder="Müşteri adını girin"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactPerson">İletişim Kişisi *</Label>
-                <Input
-                  id="contactPerson"
-                  value={formData.contactPerson}
-                  onChange={(e) => handleInputChange('contactPerson', e.target.value)}
-                  placeholder="İletişim kişisinin adı"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactPhone">İletişim Telefonu *</Label>
-                <Input
-                  id="contactPhone"
-                  value={formData.contactPhone}
-                  onChange={(e) => handleInputChange('contactPhone', e.target.value)}
-                  placeholder="0555 555 55 55"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Talep Tarihi</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formData.requestDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.requestDate ? (
-                        format(formData.requestDate, "PPP", { locale: tr })
-                      ) : (
-                        <span>Tarih seçin</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <div className="p-3">
-                      <Input
-                        type="date"
-                        value={formData.requestDate ? format(formData.requestDate, 'yyyy-MM-dd') : ''}
-                        onChange={(e) => {
-                          const date = e.target.value ? new Date(e.target.value) : undefined
-                          handleDateSelect('requestDate', date)
-                        }}
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Planlanan Kurulum Tarihi</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formData.plannedInstallDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.plannedInstallDate ? (
-                        format(formData.plannedInstallDate, "PPP", { locale: tr })
-                      ) : (
-                        <span>Tarih seçin</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <div className="p-3">
-                      <Input
-                        type="date"
-                        value={formData.plannedInstallDate ? format(formData.plannedInstallDate, 'yyyy-MM-dd') : ''}
-                        onChange={(e) => {
-                          const date = e.target.value ? new Date(e.target.value) : undefined
-                          handleDateSelect('plannedInstallDate', date)
-                        }}
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            {/* Sağ Kolon */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">Durum</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: any) => handleInputChange('status', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Durum seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="received">Alındı</SelectItem>
-                    <SelectItem value="preparing">Hazırlanıyor</SelectItem>
-                    <SelectItem value="ready">Hazır</SelectItem>
-                    <SelectItem value="installing">Kuruluyor</SelectItem>
-                    <SelectItem value="completed">Tamamlandı</SelectItem>
-                    <SelectItem value="cancelled">İptal Edildi</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority">Öncelik</Label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value: any) => handleInputChange('priority', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Öncelik seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Düşük</SelectItem>
-                    <SelectItem value="medium">Orta</SelectItem>
-                    <SelectItem value="high">Yüksek</SelectItem>
-                    <SelectItem value="urgent">Acil</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="technicianName">Teknisyen</Label>
-                <Select
-                  value={formData.technicianName || ''}
-                  onValueChange={(value) => handleInputChange('technicianName', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Teknisyen seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Metin">Metin</SelectItem>
-                    <SelectItem value="Şeref">Şeref</SelectItem>
-                    <SelectItem value="Oğuzhan">Oğuzhan</SelectItem>
-                    <SelectItem value="Ali Ünlü">Ali Ünlü</SelectItem>
-                    <SelectItem value="Leyla">Leyla</SelectItem>
-                    <SelectItem value="Yüksel">Yüksel</SelectItem>
-                    <SelectItem value="Adem">Adem</SelectItem>
-                    <SelectItem value="Onur">Onur</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="installationAddress">Kurulum Adresi *</Label>
-                <Textarea
-                  id="installationAddress"
-                  value={formData.installationAddress}
-                  onChange={(e) => handleInputChange('installationAddress', e.target.value)}
-                  placeholder="Kurulum adresini girin"
-                  rows={3}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notlar</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes || ''}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  placeholder="Ek notlar..."
-                  rows={4}
-                />
-              </div>
-            </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Sol Kolon */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="formNumber">Form Numarası *</Label>
+            <Input
+              id="formNumber"
+              value={formData.formNumber}
+              onChange={(e) => handleInputChange('formNumber', e.target.value)}
+              placeholder="KF-2024-001"
+              required
+            />
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            {onCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={loading}
-              >
-                İptal
-              </Button>
-            )}
-            <Button
-              type="submit"
-              disabled={loading || !formData.formNumber || !formData.companyName || !formData.customerName || !formData.contactPerson || !formData.contactPhone || !formData.installationAddress}
+          <div className="space-y-2">
+            <Label htmlFor="companyName">Firma Adı *</Label>
+            <Input
+              id="companyName"
+              value={formData.companyName}
+              onChange={(e) => handleInputChange('companyName', e.target.value)}
+              placeholder="Firma adını girin"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="customerName">Müşteri Adı *</Label>
+            <Input
+              id="customerName"
+              value={formData.customerName}
+              onChange={(e) => handleInputChange('customerName', e.target.value)}
+              placeholder="Müşteri adını girin"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="contactPerson">İletişim Kişisi *</Label>
+            <Input
+              id="contactPerson"
+              value={formData.contactPerson}
+              onChange={(e) => handleInputChange('contactPerson', e.target.value)}
+              placeholder="İletişim kişisinin adı"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="contactPhone">İletişim Telefonu *</Label>
+            <Input
+              id="contactPhone"
+              value={formData.contactPhone}
+              onChange={(e) => handleInputChange('contactPhone', e.target.value)}
+              placeholder="0555 555 55 55"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Talep Tarihi</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !formData.requestDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.requestDate ? (
+                    format(formData.requestDate, "PPP", { locale: tr })
+                  ) : (
+                    <span>Tarih seçin</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <div className="p-3">
+                  <Input
+                    type="date"
+                    value={formData.requestDate ? format(formData.requestDate, 'yyyy-MM-dd') : ''}
+                    onChange={(e) => {
+                      const date = e.target.value ? new Date(e.target.value) : undefined
+                      handleDateSelect('requestDate', date)
+                    }}
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Planlanan Kurulum Tarihi</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !formData.plannedInstallDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.plannedInstallDate ? (
+                    format(formData.plannedInstallDate, "PPP", { locale: tr })
+                  ) : (
+                    <span>Tarih seçin</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <div className="p-3">
+                  <Input
+                    type="date"
+                    value={formData.plannedInstallDate ? format(formData.plannedInstallDate, 'yyyy-MM-dd') : ''}
+                    onChange={(e) => {
+                      const date = e.target.value ? new Date(e.target.value) : undefined
+                      handleDateSelect('plannedInstallDate', date)
+                    }}
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
+        {/* Sağ Kolon */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="status">Durum</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value: any) => handleInputChange('status', value)}
             >
-              {loading ? 'Kaydediliyor...' : 'Kaydet'}
-            </Button>
+              <SelectTrigger>
+                <SelectValue placeholder="Durum seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="received">Alındı</SelectItem>
+                <SelectItem value="preparing">Hazırlanıyor</SelectItem>
+                <SelectItem value="ready">Hazır</SelectItem>
+                <SelectItem value="installing">Kuruluyor</SelectItem>
+                <SelectItem value="completed">Tamamlandı</SelectItem>
+                <SelectItem value="cancelled">İptal Edildi</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+
+          <div className="space-y-2">
+            <Label htmlFor="priority">Öncelik</Label>
+            <Select
+              value={formData.priority}
+              onValueChange={(value: any) => handleInputChange('priority', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Öncelik seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Düşük</SelectItem>
+                <SelectItem value="medium">Orta</SelectItem>
+                <SelectItem value="high">Yüksek</SelectItem>
+                <SelectItem value="urgent">Acil</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="technicianName">Teknisyen</Label>
+            <Select
+              value={formData.technicianName || ''}
+              onValueChange={(value) => handleInputChange('technicianName', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Teknisyen seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Metin">Metin</SelectItem>
+                <SelectItem value="Şeref">Şeref</SelectItem>
+                <SelectItem value="Oğuzhan">Oğuzhan</SelectItem>
+                <SelectItem value="Ali Ünlü">Ali Ünlü</SelectItem>
+                <SelectItem value="Leyla">Leyla</SelectItem>
+                <SelectItem value="Yüksel">Yüksel</SelectItem>
+                <SelectItem value="Adem">Adem</SelectItem>
+                <SelectItem value="Onur">Onur</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="installationAddress">Kurulum Adresi *</Label>
+            <Textarea
+              id="installationAddress"
+              value={formData.installationAddress}
+              onChange={(e) => handleInputChange('installationAddress', e.target.value)}
+              placeholder="Kurulum adresini girin"
+              rows={3}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notlar</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes || ''}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
+              placeholder="Ek notlar..."
+              rows={4}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end space-x-2 pt-4">
+        {onCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            İptal
+          </Button>
+        )}
+        <Button
+          type="submit"
+          disabled={loading || !formData.formNumber || !formData.companyName || !formData.customerName || !formData.contactPerson || !formData.contactPhone || !formData.installationAddress}
+        >
+          {loading ? 'Kaydediliyor...' : 'Kaydet'}
+        </Button>
+      </div>
+    </form>
   )
 }
