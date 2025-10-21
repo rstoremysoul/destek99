@@ -6,14 +6,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { mockInstallationForms } from '@/lib/hardware-mock-data'
 import { InstallationForm } from '@/types'
+import { InstallationForm as InstallationFormComponent } from '@/components/installation-form'
 import { Plus, Search, Filter, Package, Calendar, User, Building2, MapPin } from 'lucide-react'
 
 export default function InstallationsPage() {
-  const [installations] = useState<InstallationForm[]>(mockInstallationForms)
+  const [installations, setInstallations] = useState<InstallationForm[]>(mockInstallationForms)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showNewForm, setShowNewForm] = useState(false)
   const router = useRouter()
+
+  const handleFormSubmit = async (formData: any) => {
+    try {
+      // Yeni form ekle
+      const newInstallation: InstallationForm = {
+        id: `inst-${Date.now()}`,
+        formNumber: formData.formNumber,
+        companyId: `comp-${Date.now()}`,
+        companyName: formData.companyName,
+        customerId: `cust-${Date.now()}`,
+        customerName: formData.customerName,
+        requestDate: formData.requestDate || new Date(),
+        plannedInstallDate: formData.plannedInstallDate || new Date(),
+        status: formData.status,
+        priority: formData.priority,
+        devices: [],
+        installationAddress: formData.installationAddress,
+        contactPerson: formData.contactPerson,
+        contactPhone: formData.contactPhone,
+        notes: formData.notes || '',
+        technicianName: formData.technicianName,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      setInstallations(prev => [newInstallation, ...prev])
+      setShowNewForm(false)
+      alert('Kurulum formu başarıyla oluşturuldu!')
+    } catch (error) {
+      console.error('Error saving installation form:', error)
+      alert('Form kaydedilirken hata oluştu.')
+    }
+  }
 
   const filteredInstallations = installations.filter(installation =>
     installation.formNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -101,7 +137,10 @@ export default function InstallationsPage() {
               Cihaz kurulum formlarını takip edin ve yönetin
             </p>
           </div>
-          <Button className="bg-white text-green-600 hover:bg-green-50 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+          <Button
+            onClick={() => setShowNewForm(true)}
+            className="bg-white text-green-600 hover:bg-green-50 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
             <Plus className="mr-2 h-5 w-5" />
             Yeni Form
           </Button>
@@ -282,6 +321,22 @@ export default function InstallationsPage() {
           )}
         </div>
       </div>
+
+      {/* Yeni Form Dialog */}
+      <Dialog open={showNewForm} onOpenChange={setShowNewForm}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Yeni Kurulum Formu</DialogTitle>
+            <DialogDescription>
+              Kurulum bilgilerini girerek yeni form oluşturun
+            </DialogDescription>
+          </DialogHeader>
+          <InstallationFormComponent
+            onSubmit={handleFormSubmit}
+            onCancel={() => setShowNewForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
