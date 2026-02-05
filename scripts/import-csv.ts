@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('../src/generated/prisma');
 
@@ -42,7 +42,7 @@ async function importCSVData() {
   try {
     console.log('Starting CSV import...');
 
-    const csvPath = path.join(process.cwd(), 'TEKNİK TAKİP LİSTESİcsv.csv');
+    const csvPath = path.join(process.cwd(), 'TEKNÄ°K TAKÄ°P LÄ°STESÄ°csv.csv');
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
 
     // Split by lines and remove BOM if present
@@ -160,7 +160,7 @@ async function importCSVData() {
     }
 
     // Create sample personnel
-    const personnelNames = ['Metin', 'Şeref', 'Oğuzhan', 'Ali Ünlü', 'Leyla', 'Yüksel', 'Adem', 'Onur'];
+    const personnelNames = ['Metin', 'Åeref', 'OÄŸuzhan', 'Ali ÃœnlÃ¼', 'Leyla', 'YÃ¼ksel', 'Adem', 'Onur'];
     for (const name of personnelNames) {
       try {
         await prismaClient.personnel.create({

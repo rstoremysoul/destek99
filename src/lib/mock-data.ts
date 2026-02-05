@@ -1,4 +1,4 @@
-import { SupportTicket, Company, Customer } from '@/types'
+﻿import { SupportTicket, Company, Customer } from '@/types'
 
 export const mockCompanies: Company[] = [
   {
@@ -229,7 +229,7 @@ export const mockTickets: SupportTicket[] = [
   {
     id: 'T008',
     subject: 'Veritabanı performans optimizasyonu',
-    description: 'Sorgu süreleri uzun. İndex yapısı gözden geçirilmeli.',
+    description: 'Sorgu süreleri uzun. Index yapısı gözden geçirilmeli.',
     status: 'in-progress',
     priority: 'medium',
     assignedTo: '3',

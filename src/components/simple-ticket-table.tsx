@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { SupportTicket } from '@/types'
 import { Badge } from '@/components/ui/badge'

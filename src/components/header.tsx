@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { MobileSidebar } from './mobile-sidebar'
 import { useAuth } from '@/hooks/useAuth'

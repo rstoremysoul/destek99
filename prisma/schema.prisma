@@ -3,7 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -11,125 +10,505 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User Model
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(TECHNICIAN)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+// Technician Model
+model Technician {
+  id                String             @id @default(uuid())
+  name              String
+  phone             String?
+  email             String?
+  specialization    String?            @map("specialization")
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  installationForms InstallationForm[]
+  deviceRepairs     DeviceRepair[]
+
+  @@map("technicians")
+}
+
+// Company Model
+model Company {
+  id                String             @id @default(uuid())
+  name              String
+  address           String?
+  phone             String?
+  email             String?
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  installationForms InstallationForm[]
+  deviceRepairs     DeviceRepair[]
+
+  @@map("companies")
+}
+
+// Customer Model
+model Customer {
+  id                String             @id @default(uuid())
+  name              String
+  email             String?
+  phone             String
+  companyId         String             @map("company_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  installationForms InstallationForm[]
+  deviceRepairs     DeviceRepair[]
+
+  @@map("customers")
+}
+
+// Installation Form Model
+model InstallationForm {
+  id                   String               @id @default(uuid())
+  formNumber           String               @unique @map("form_number")
+  companyId            String               @map("company_id")
+  company              Company              @relation(fields: [companyId], references: [id])
+  customerId           String               @map("customer_id")
+  customer             Customer             @relation(fields: [customerId], references: [id])
+  technicianId         String?              @map("technician_id")
+  technician           Technician?          @relation(fields: [technicianId], references: [id])
+  requestDate          DateTime             @map("request_date")
+  plannedInstallDate   DateTime             @map("planned_install_date")
+  actualInstallDate    DateTime?            @map("actual_install_date")
+  status               InstallationStatus   @default(RECEIVED)
+  priority             Priority             @default(MEDIUM)
+  installationAddress  String               @map("installation_address")
+  contactPerson        String               @map("contact_person")
+  contactPhone         String               @map("contact_phone")
+  notes                String?
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+  devices              InstallationDevice[]
+
+  @@map("installation_forms")
+}
+
+// Installation Device Model
+model InstallationDevice {
+  id                 String             @id @default(uuid())
+  installationFormId String             @map("installation_form_id")
+  installationForm   InstallationForm   @relation(fields: [installationFormId], references: [id], onDelete: Cascade)
+  deviceId           String             @map("device_id")
+  deviceName         String             @map("device_name")
+  model              String
+  serialNumber       String             @map("serial_number")
+  quantity           Int                @default(1)
+  installationStatus DeviceInstallStatus @default(PENDING)
+  notes              String?
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  @@map("installation_devices")
+}
+
+// Device Repair Model
+model DeviceRepair {
+  id                  String       @id @default(uuid())
+  repairNumber        String       @unique @map("repair_number")
+  companyId           String       @map("company_id")
+  company             Company      @relation(fields: [companyId], references: [id])
+  customerId          String       @map("customer_id")
+  customer            Customer     @relation(fields: [customerId], references: [id])
+  technicianId        String?      @map("technician_id")
+  technician          Technician?  @relation(fields: [technicianId], references: [id])
+  deviceName          String       @map("device_name")
+  model               String
+  serialNumber        String       @map("serial_number")
+  brand               String?
+  receivedDate        DateTime     @map("received_date")
+  completedDate       DateTime?    @map("completed_date")
+  estimatedCompletion DateTime?    @map("estimated_completion")
+  status              RepairStatus @default(RECEIVED)
+  priority            Priority     @default(MEDIUM)
+  problemDescription  String       @map("problem_description")
+  diagnosisNotes      String?      @map("diagnosis_notes")
+  repairNotes         String?      @map("repair_notes")
+  isWarranty          Boolean      @default(false) @map("is_warranty")
+  warrantyInfo        String?      @map("warranty_info")
+  laborCost           Float?       @map("labor_cost")
+  partsCost           Float?       @map("parts_cost")
+  totalCost           Float?       @map("total_cost")
+  repairCost          Float?       @map("repair_cost")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  @@map("device_repairs")
+}
+
+
+// Cargo Company Model
+model CargoCompany {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  cargoes   CargoTracking[]
+
+  @@map("cargo_companies")
+}
+
+// Cargo Tracking Model
+model CargoTracking {
+  id                 String            @id @default(uuid())
+  trackingNumber     String            @unique @map("tracking_number")
+  type               CargoType
+  status             CargoStatus       @default(IN_TRANSIT)
+  sender             String
+  receiver           String
+  cargoCompany       String?           @map("cargo_company") // Kept for legacy/fallback
+  cargoCompanyId     String?           @map("cargo_company_id")
+  company            CargoCompany?     @relation(fields: [cargoCompanyId], references: [id])
+  sentDate           DateTime?         @map("sent_date")
+  deliveredDate      DateTime?         @map("delivered_date")
+  destination        CargoDestination
+  destinationAddress String            @map("destination_address")
+  notes              String?
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  devices            CargoDevice[]
+
+  @@map("cargo_trackings")
+}
+
+// Cargo Device Model
+model CargoDevice {
+  id             String         @id @default(uuid())
+  cargoId        String         @map("cargo_id")
+  cargo          CargoTracking  @relation(fields: [cargoId], references: [id], onDelete: Cascade)
+  deviceName     String         @map("device_name")
+  model          String
+  serialNumber   String         @map("serial_number")
+  quantity       Int            @default(1)
+  condition      DeviceCondition
+  purpose        CargoPurpose
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  @@map("cargo_devices")
+}
+
+// Vendor Model
+model Vendor {
+  id            String        @id @default(uuid())
+  name          String        @unique
+  type          VendorType
+  contactPerson String?       @map("contact_person")
+  contactPhone  String?       @map("contact_phone")
+  contactEmail  String?       @map("contact_email")
+  address       String?
+  notes         String?
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  products      VendorProduct[]
+
+  @@map("vendors")
+}
+
+// Vendor Product Model
+model VendorProduct {
+  id                String                 @id @default(uuid())
+  vendorId          String                 @map("vendor_id")
+  vendor            Vendor                 @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  deviceName        String                 @map("device_name")
+  model             String
+  serialNumber      String                 @map("serial_number")
+  brand             String?
+  problemDescription String                @map("problem_description")
+  currentStatus     VendorProductStatus    @default(AT_VENDOR) @map("current_status")
+  sentDate          DateTime?              @map("sent_date")
+  receivedDate      DateTime?              @map("received_date")
+  estimatedReturn   DateTime?              @map("estimated_return")
+  cost              Float?
+  notes             String?
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+  statusHistory     VendorProductStatusHistory[]
+
+  @@map("vendor_products")
+}
+
+// Vendor Product Status History
+model VendorProductStatusHistory {
+  id             String              @id @default(uuid())
+  productId      String              @map("product_id")
+  product        VendorProduct       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  status         VendorProductStatus
+  statusDate     DateTime            @map("status_date")
+  notes          String?
+  updatedBy      String              @map("updated_by")
+  updatedByName  String              @map("updated_by_name")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  @@map("vendor_product_status_history")
+}
+
+// Technical Service Model
 model TechnicalService {
-  id                    Int       @id @default(autoincrement())
-  operatingPersonnel    String?   @map("operating_personnel")
-  invoiceDate          DateTime? @map("invoice_date")
-  brand                String?
-  businessName         String?   @map("business_name")
-  deviceName           String?   @map("device_name")
-  model                String?
-  deviceSerial         String?   @map("device_serial")
-  serviceEntryDate     DateTime? @map("service_entry_date")
-  serviceExitDate      DateTime? @map("service_exit_date")
-  deviceProblem        String?   @map("device_problem")
-  problemDescription   String?   @map("problem_description")
-  performedAction      String?   @map("performed_action")
-  serviceCost          String?   @map("service_cost")
-  customerCost         String?   @map("customer_cost")
-  approvedBy           String?   @map("approved_by")
-  connectWritten       String?   @map("connect_written")
-  vendorName           String?   @map("vendor_name")
-  isAtVendor           Boolean   @default(false) @map("is_at_vendor")
-  vendorEntryDate      DateTime? @map("vendor_entry_date")
-  vendorExitDate       DateTime? @map("vendor_exit_date")
-  vendorStatus         VendorStatus @default(NOT_AT_VENDOR) @map("vendor_status")
+  id                  Int       @id @default(autoincrement())
+  operatingPersonnel  String?   @map("operating_personnel")
+  invoiceDate         DateTime? @map("invoice_date")
+  brand               String?
+  businessName        String    @map("business_name")
+  deviceName          String    @map("device_name")
+  model               String?
+  deviceSerial        String?   @map("device_serial")
+  serviceEntryDate    DateTime? @map("service_entry_date")
+  serviceExitDate     DateTime? @map("service_exit_date")
+  deviceProblem       String?   @map("device_problem")
+  problemDescription  String?   @map("problem_description")
+  performedAction     String?   @map("performed_action")
+  serviceCost         Float?    @map("service_cost")
+  customerCost        Float?    @map("customer_cost")
+  approvedBy          String?   @map("approved_by")
+  connectWritten      String?   @map("connect_written")
+  vendorName          String?   @map("vendor_name")
+  isAtVendor          Boolean   @default(false) @map("is_at_vendor")
+  vendorEntryDate     DateTime? @map("vendor_entry_date")
+  vendorExitDate      DateTime? @map("vendor_exit_date")
+  vendorStatus        String?   @default("NOT_AT_VENDOR") @map("vendor_status")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
   @@map("technical_services")
 }
 
-model VendorTracking {
-  id                    Int       @id @default(autoincrement())
-  vendorName           String    @map("vendor_name")
-  deviceName           String?   @map("device_name")
-  deviceSerial         String?   @map("device_serial")
-  businessName         String?   @map("business_name")
-  entryDate            DateTime? @map("entry_date")
-  exitDate             DateTime? @map("exit_date")
-  problemDescription   String?   @map("problem_description")
-  vendorAction         String?   @map("vendor_action")
-  cost                 String?
-  status               VendorStatus @default(AT_VENDOR)
-  notes                String?
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
+// Device Brand Model
+model DeviceBrand {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  models    DeviceModel[]
 
-  @@map("vendor_tracking")
+  @@map("device_brands")
 }
 
-model Vendor {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  type        VendorType
-  contact     String?
-  phone       String?
-  email       String?
-  address     String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@map("vendors")
-}
-
-model Device {
-  id           Int      @id @default(autoincrement())
-  name         String
-  brand        String?
-  model        String?
-  serialNumber String?  @unique @map("serial_number")
-  status       DeviceStatus @default(ACTIVE)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  @@map("devices")
-}
-
-model Business {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  contact   String?
-  phone     String?
-  email     String?
-  address   String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("businesses")
-}
-
-model Personnel {
-  id        Int      @id @default(autoincrement())
+// Device Model
+model DeviceModel {
+  id        String      @id @default(uuid())
+  brandId   String      @map("brand_id")
+  brand     DeviceBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
   name      String
-  role      String?
-  phone     String?
-  email     String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
 
-  @@map("personnel")
+  @@unique([brandId, name])
+  @@map("device_models")
 }
 
-enum DeviceStatus {
-  ACTIVE
-  IN_SERVICE
-  RETIRED
+// Location/Address Model
+model Location {
+  id                String              @id @default(uuid())
+  name              String
+  address           String
+  city              String?
+  district          String?
+  phone             String?
+  contactPerson     String?             @map("contact_person")
+  type              LocationType?
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  assignedDevices   EquivalentDevice[]
+
+  @@map("locations")
+}
+
+// Equivalent Device Model
+model EquivalentDevice {
+  id                  String                        @id @default(uuid())
+  deviceNumber        String                        @unique @map("device_number")
+  deviceName          String                        @map("device_name")
+  brand               String
+  model               String
+  serialNumber        String                        @unique @map("serial_number")
+  currentLocation     EquivalentLocation            @default(IN_WAREHOUSE) @map("current_location")
+  // Optional: Link to a specific Location entity if needed for more than just enum
+  locationId          String?                       @map("location_id")
+  location            Location?                     @relation(fields: [locationId], references: [id])
+  
+  status              EquivalentDeviceStatus        @default(AVAILABLE)
+  assignedToId        String?                       @map("assigned_to_id")
+  // assignedTo          Location?                     @relation(fields: [assignedToId], references: [id]) // Use locationId instead for current warehouse/location
+  
+  assignedDate        DateTime?                     @map("assigned_date")
+  purchaseDate        DateTime?                     @map("purchase_date")
+  warrantyEnd         DateTime?                     @map("warranty_end")
+  condition           EquivalentCondition           @default(GOOD)
+  images              String?
+  notes               String?
+  createdBy           String?                       @map("created_by")
+  createdByName       String?                       @map("created_by_name")
+  createdAt           DateTime                      @default(now()) @map("created_at")
+  updatedAt           DateTime                      @updatedAt @map("updated_at")
+  history             EquivalentDeviceHistory[]
+
+  @@map("equivalent_devices")
+}
+
+// Equivalent Device History Model
+model EquivalentDeviceHistory {
+  id                String              @id @default(uuid())
+  deviceId          String              @map("device_id")
+  device            EquivalentDevice    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  previousLocation  EquivalentLocation  @map("previous_location")
+  newLocation       EquivalentLocation  @map("new_location")
+  // Also track physical Location IDs if we use them
+  previousLocationId String?            @map("previous_location_id")
+  newLocationId      String?            @map("new_location_id")
+  
+  previousStatus    EquivalentDeviceStatus? @map("previous_status")
+  newStatus         EquivalentDeviceStatus? @map("new_status")
+  assignedToId      String?             @map("assigned_to_id")
+  assignedToName    String?             @map("assigned_to_name")
+  notes             String?
+  changedBy         String              @map("changed_by")
+  changedByName     String              @map("changed_by_name")
+  changedAt         DateTime            @default(now()) @map("changed_at")
+
+  @@map("equivalent_device_history")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  TECHNICIAN
+  MANAGER
+}
+
+enum InstallationStatus {
+  RECEIVED
+  PREPARING
+  READY
+  INSTALLING
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum DeviceInstallStatus {
+  PENDING
+  CONFIGURED
+  INSTALLED
+  TESTED
+  COMPLETED
+}
+
+enum RepairStatus {
+  RECEIVED
+  DIAGNOSING
+  WAITING_PARTS
+  REPAIRING
+  TESTING
+  COMPLETED
+  UNREPAIRABLE
+}
+
+enum CargoType {
+  INCOMING
+  OUTGOING
+  ON_SITE_SERVICE
+  INSTALLATION_TEAM
+}
+
+enum CargoStatus {
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
   LOST
+  DAMAGED
 }
 
-enum VendorStatus {
-  NOT_AT_VENDOR
-  AT_VENDOR
-  COMPLETED_AT_VENDOR
-  RETURNED_FROM_VENDOR
+enum CargoDestination {
+  CUSTOMER
+  DISTRIBUTOR
+  BRANCH
+  HEADQUARTERS
+}
+
+enum DeviceCondition {
+  NEW
+  USED
+  REFURBISHED
+  DAMAGED
+}
+
+enum CargoPurpose {
+  INSTALLATION
+  REPLACEMENT
+  REPAIR
+  RETURN
 }
 
 enum VendorType {
-  REPAIR_SERVICE
+  MANUFACTURER
+  SERVICE_PROVIDER
+  DISTRIBUTOR
+}
+
+enum VendorProductStatus {
+  AT_VENDOR
+  IN_TESTING
+  IN_TRANSIT
+  COMPLETED
+  RETURNED
+}
+
+enum EquivalentDeviceStatus {
+  AVAILABLE
+  IN_USE
+  IN_MAINTENANCE
+  RESERVED
+  RETIRED
+  PASSIVE
+}
+
+enum EquivalentCondition {
+  NEW
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum EquivalentLocation {
+  IN_WAREHOUSE
+  ON_SITE_SERVICE
+  AT_CUSTOMER
+}
+
+enum LocationType {
+  WAREHOUSE
+  CUSTOMER
+  SERVICE_CENTER
+  BRANCH
+  HEADQUARTERS
   SUPPLIER
-  MAINTENANCE
-  WARRANTY
+  TECHNICAL_SERVICE
+  INSTALLATION_TEAM
+  TESTING
+  CONSIGNMENT
 }

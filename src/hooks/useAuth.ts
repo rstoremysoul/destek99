@@ -1,27 +1,46 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { User } from '@/types'
-import { getCurrentUser, setCurrentUser, logout as authLogout } from '@/lib/auth'
+import { useRouter } from 'next/navigation'
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
-    const currentUser = getCurrentUser()
-    setUser(currentUser)
-    setLoading(false)
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          setUser(data.user)
+        } else {
+          setUser(null)
+        }
+      } catch (error) {
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
   }, [])
 
   const login = (userData: User) => {
-    setCurrentUser(userData)
     setUser(userData)
   }
 
-  const logout = () => {
-    authLogout()
-    setUser(null)
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      setUser(null)
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout failed', error)
+    }
   }
 
   return {

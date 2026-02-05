@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('../src/generated/prisma');
 
@@ -59,12 +59,12 @@ function detectVendorFromText(deviceName, problemDescription, performedAction) {
   }
 
   // Additional vendor detection logic
-  if (text.includes('MERKEZE GÖNDERİLDİ') || text.includes('MERKEZE')) {
-    return 'MERKEZ SERVİS';
+  if (text.includes('MERKEZE GÃ–NDERÄ°LDÄ°') || text.includes('MERKEZE')) {
+    return 'MERKEZ SERVÄ°S';
   }
 
-  if (text.includes('GARANTİ') || text.includes('GARANTI')) {
-    return 'GARANTİ SERVİSİ';
+  if (text.includes('GARANTÄ°') || text.includes('GARANTI')) {
+    return 'GARANTÄ° SERVÄ°SÄ°';
   }
 
   return null;
@@ -74,14 +74,14 @@ function isAtVendorService(problemDescription, performedAction) {
   const text = `${problemDescription || ''} ${performedAction || ''}`.toUpperCase();
 
   const vendorKeywords = [
-    'MERKEZE GÖNDERİLDİ',
+    'MERKEZE GÃ–NDERÄ°LDÄ°',
     'MERKEZE',
     'HUGIN',
     'POS SAFE',
     'POSSIFY',
     'SERVIS ALIYOR',
-    'TEDARIKÇI',
-    'SERVİSE GÖNDERİLDİ'
+    'TEDARIKÃ‡I',
+    'SERVÄ°SE GÃ–NDERÄ°LDÄ°'
   ];
 
   return vendorKeywords.some(keyword => text.includes(keyword));
@@ -100,8 +100,8 @@ async function createVendorRecords() {
     { name: 'VINTEC', type: 'SUPPLIER' },
     { name: 'VITAL LINK', type: 'SUPPLIER' },
     { name: 'ECHOPOS', type: 'SUPPLIER' },
-    { name: 'MERKEZ SERVİS', type: 'REPAIR_SERVICE' },
-    { name: 'GARANTİ SERVİSİ', type: 'WARRANTY' }
+    { name: 'MERKEZ SERVÄ°S', type: 'REPAIR_SERVICE' },
+    { name: 'GARANTÄ° SERVÄ°SÄ°', type: 'WARRANTY' }
   ];
 
   for (const vendor of vendors) {
@@ -127,7 +127,7 @@ async function importVendorTracking() {
     // First create vendor records
     await createVendorRecords();
 
-    const csvPath = path.join(process.cwd(), 'TEKNİK TAKİP LİSTESİcsv.csv');
+    const csvPath = path.join(process.cwd(), 'TEKNÄ°K TAKÄ°P LÄ°STESÄ°csv.csv');
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
 
     const lines = csvContent.replace(/^\uFEFF/, '').split('\n');

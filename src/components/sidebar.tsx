@@ -18,8 +18,11 @@ import {
   ChevronDown,
   ChevronRight,
   Cog,
+
   BarChart3,
-  Factory
+  Factory,
+  Box,
+  Warehouse
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
@@ -34,9 +37,11 @@ const navigation = [
       { name: 'Kurulum Formları', href: '/dashboard/installations', icon: Package },
       { name: 'Kargo Takibi', href: '/dashboard/cargo', icon: Truck },
       { name: 'Cihaz Tamiri', href: '/dashboard/repairs', icon: Wrench },
+      { name: 'Muadil Cihazlar', href: '/dashboard/equivalent-devices', icon: Box },
       { name: 'Teknik Servis Takibi', href: '/dashboard/technical-service', icon: Cog },
       { name: 'Tedarikçi Takibi', href: '/dashboard/vendor-tracking', icon: Factory },
       { name: 'Servis Analitikleri', href: '/dashboard/technical-service/analytics', icon: BarChart3 },
+      { name: 'Depolar', href: '/dashboard/warehouses', icon: Warehouse }, // Added 'Depolar' link
     ]
   },
   { name: 'Müşteriler', href: '/dashboard/customers', icon: Users },
@@ -58,7 +63,7 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="flex h-16 items-center px-6 border-b">
         <h2 className="text-lg font-semibold">Destek Yönetimi</h2>
       </div>
-      
+
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation.map((item) => {
           if ('children' in item) {
@@ -145,3 +150,4 @@ export function Sidebar({ className }: SidebarProps) {
     </div>
   )
 }
+

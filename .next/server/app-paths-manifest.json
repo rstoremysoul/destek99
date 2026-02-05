@@ -1,6 +1,17 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/dashboard/tickets/page": "app/dashboard/tickets/page.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/warehouses/movements/route": "app/api/warehouses/movements/route.js",
+  "/api/warehouses/[id]/route": "app/api/warehouses/[id]/route.js",
+  "/api/warehouses/route": "app/api/warehouses/route.js",
+  "/api/installations/route": "app/api/installations/route.js",
+  "/api/cargo/route": "app/api/cargo/route.js",
+  "/api/locations/route": "app/api/locations/route.js",
+  "/api/cargo/dispatch/route": "app/api/cargo/dispatch/route.js",
+  "/dashboard/warehouses/page": "app/dashboard/warehouses/page.js",
+  "/dashboard/cargo/page": "app/dashboard/cargo/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/warehouses/[id]/page": "app/dashboard/warehouses/[id]/page.js",
   "/dashboard/installations/page": "app/dashboard/installations/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/dashboard/repairs/page": "app/dashboard/repairs/page.js"
 }

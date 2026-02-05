@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import { SupportTicket, Note } from '@/types'
@@ -104,12 +104,12 @@ const TicketContext = createContext<TicketContextType | undefined>(undefined)
 
 export function TicketProvider({ children }: { children: ReactNode }) {
   const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS)
-  
+
 
   const updateTicketStatus = useCallback((ticketId: string, status: SupportTicket['status']) => {
-    setTickets(prevTickets => 
-      prevTickets.map(ticket => 
-        ticket.id === ticketId 
+    setTickets(prevTickets =>
+      prevTickets.map(ticket =>
+        ticket.id === ticketId
           ? { ...ticket, status, updatedAt: new Date() }
           : ticket
       )
@@ -117,9 +117,9 @@ export function TicketProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateTicketPriority = useCallback((ticketId: string, priority: SupportTicket['priority']) => {
-    setTickets(prevTickets => 
-      prevTickets.map(ticket => 
-        ticket.id === ticketId 
+    setTickets(prevTickets =>
+      prevTickets.map(ticket =>
+        ticket.id === ticketId
           ? { ...ticket, priority, updatedAt: new Date() }
           : ticket
       )
@@ -135,14 +135,14 @@ export function TicketProvider({ children }: { children: ReactNode }) {
       createdAt: new Date()
     }
 
-    setTickets(prevTickets => 
-      prevTickets.map(ticket => 
-        ticket.id === ticketId 
-          ? { 
-              ...ticket, 
-              notes: [...ticket.notes, newNote],
-              updatedAt: new Date() 
-            }
+    setTickets(prevTickets =>
+      prevTickets.map(ticket =>
+        ticket.id === ticketId
+          ? {
+            ...ticket,
+            notes: [...ticket.notes, newNote],
+            updatedAt: new Date()
+          }
           : ticket
       )
     )

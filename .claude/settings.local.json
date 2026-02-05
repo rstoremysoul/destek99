@@ -15,7 +15,13 @@
       "Bash(npx next dev:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(npm run build)"
+      "Bash(npm run build)",
+      "Bash(set PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=evet)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(taskkill:*)",
+      "Bash(sqlite3:*)",
+      "Bash(set PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=evet veritabanını sıfırla)",
+      "Bash(cmd /c \"set PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=evet veritabanını sıfırla&& npx prisma db push --force-reset --skip-generate\")"
     ],
     "deny": [],
     "ask": []

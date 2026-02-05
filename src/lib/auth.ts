@@ -1,4 +1,4 @@
-import { User } from '@/types'
+﻿import { User } from '@/types'
 
 const MOCK_USERS: User[] = [
   {
@@ -26,21 +26,21 @@ const MOCK_USERS: User[] = [
 
 export const mockLogin = async (username: string, password: string): Promise<User | null> => {
   await new Promise(resolve => setTimeout(resolve, 1000))
-  
+
   const user = MOCK_USERS.find(u => u.username === username)
   if (user && password === '123456') {
     return user
   }
-  
+
   return null
 }
 
 export const getCurrentUser = (): User | null => {
   if (typeof window === 'undefined') return null
-  
+
   const userStr = localStorage.getItem('currentUser')
   if (!userStr) return null
-  
+
   try {
     return JSON.parse(userStr)
   } catch {
@@ -50,7 +50,7 @@ export const getCurrentUser = (): User | null => {
 
 export const setCurrentUser = (user: User | null) => {
   if (typeof window === 'undefined') return
-  
+
   if (user) {
     localStorage.setItem('currentUser', JSON.stringify(user))
   } else {

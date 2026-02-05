@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { db } from '../../../lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,21 +10,31 @@ export async function GET(request: NextRequest) {
     let whereClause: any = {}
 
     if (vendor && vendor !== 'all') {
-      whereClause.vendorName = vendor
+      whereClause.vendorId = vendor
     }
 
     if (status && status !== 'all') {
-      whereClause.status = status
+      const statusMap: { [key: string]: string } = {
+        'at_vendor': 'AT_VENDOR',
+        'in_testing': 'IN_TESTING',
+        'in_transit': 'IN_TRANSIT',
+        'completed': 'COMPLETED',
+        'returned': 'RETURNED',
+      }
+      whereClause.currentStatus = statusMap[status.toLowerCase()] || status.toUpperCase()
     }
 
-    const records = await db.vendorTracking.findMany({
+    const products = await db.vendorProduct.findMany({
       where: whereClause,
+      include: {
+        vendor: true,
+      },
       orderBy: {
-        entryDate: 'desc'
+        sentDate: 'desc'
       }
     })
 
-    return NextResponse.json(records)
+    return NextResponse.json(products)
   } catch (error) {
     console.error('Error fetching vendor tracking records:', error)
     return NextResponse.json(
@@ -38,27 +48,39 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const record = await db.vendorTracking.create({
+    const statusMap: { [key: string]: string } = {
+      'at_vendor': 'AT_VENDOR',
+      'in_testing': 'IN_TESTING',
+      'in_transit': 'IN_TRANSIT',
+      'completed': 'COMPLETED',
+      'returned': 'RETURNED',
+    }
+
+    const product = await db.vendorProduct.create({
       data: {
-        vendorName: body.vendorName,
+        vendorId: body.vendorId,
         deviceName: body.deviceName,
-        deviceSerial: body.deviceSerial,
-        businessName: body.businessName,
-        entryDate: body.entryDate ? new Date(body.entryDate) : null,
-        exitDate: body.exitDate ? new Date(body.exitDate) : null,
-        problemDescription: body.problemDescription,
-        vendorAction: body.vendorAction,
+        model: body.model || '',
+        serialNumber: body.serialNumber || '',
+        brand: body.brand,
+        problemDescription: body.problemDescription || '',
+        currentStatus: statusMap[body.status?.toLowerCase()] || 'AT_VENDOR',
+        sentDate: body.sentDate ? new Date(body.sentDate) : null,
+        receivedDate: body.receivedDate ? new Date(body.receivedDate) : null,
+        estimatedReturn: body.estimatedReturn ? new Date(body.estimatedReturn) : null,
         cost: body.cost,
-        status: body.status || 'AT_VENDOR',
         notes: body.notes,
+      },
+      include: {
+        vendor: true,
       }
     })
 
-    return NextResponse.json(record)
+    return NextResponse.json(product)
   } catch (error) {
-    console.error('Error creating vendor tracking record:', error)
+    console.error('Error creating vendor product:', error)
     return NextResponse.json(
-      { error: 'Failed to create record' },
+      { error: 'Failed to create product', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
@@ -71,33 +93,45 @@ export async function PUT(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'Record ID is required' },
+        { error: 'Product ID is required' },
         { status: 400 }
       )
     }
 
-    const record = await db.vendorTracking.update({
-      where: { id: Number(id) },
+    const statusMap: { [key: string]: string } = {
+      'at_vendor': 'AT_VENDOR',
+      'in_testing': 'IN_TESTING',
+      'in_transit': 'IN_TRANSIT',
+      'completed': 'COMPLETED',
+      'returned': 'RETURNED',
+    }
+
+    const product = await db.vendorProduct.update({
+      where: { id: String(id) },
       data: {
-        vendorName: data.vendorName,
+        vendorId: data.vendorId,
         deviceName: data.deviceName,
-        deviceSerial: data.deviceSerial,
-        businessName: data.businessName,
-        entryDate: data.entryDate ? new Date(data.entryDate) : null,
-        exitDate: data.exitDate ? new Date(data.exitDate) : null,
+        model: data.model,
+        serialNumber: data.serialNumber,
+        brand: data.brand,
         problemDescription: data.problemDescription,
-        vendorAction: data.vendorAction,
+        currentStatus: statusMap[data.status?.toLowerCase()] || data.currentStatus,
+        sentDate: data.sentDate ? new Date(data.sentDate) : null,
+        receivedDate: data.receivedDate ? new Date(data.receivedDate) : null,
+        estimatedReturn: data.estimatedReturn ? new Date(data.estimatedReturn) : null,
         cost: data.cost,
-        status: data.status || 'AT_VENDOR',
         notes: data.notes,
+      },
+      include: {
+        vendor: true,
       }
     })
 
-    return NextResponse.json(record)
+    return NextResponse.json(product)
   } catch (error) {
-    console.error('Error updating vendor tracking record:', error)
+    console.error('Error updating vendor product:', error)
     return NextResponse.json(
-      { error: 'Failed to update record' },
+      { error: 'Failed to update product' },
       { status: 500 }
     )
   }
@@ -110,20 +144,20 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'Record ID is required' },
+        { error: 'Product ID is required' },
         { status: 400 }
       )
     }
 
-    await db.vendorTracking.delete({
-      where: { id: Number(id) }
+    await db.vendorProduct.delete({
+      where: { id: String(id) }
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting vendor tracking record:', error)
+    console.error('Error deleting vendor product:', error)
     return NextResponse.json(
-      { error: 'Failed to delete record' },
+      { error: 'Failed to delete product' },
       { status: 500 }
     )
   }

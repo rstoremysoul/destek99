@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+﻿import { NextResponse } from 'next/server'
+import { db } from '../../../../lib/db'
 
 export async function GET() {
   try {
@@ -37,11 +37,6 @@ export async function GET() {
       _count: {
         deviceName: true
       },
-      where: {
-        deviceName: {
-          not: null
-        }
-      },
       orderBy: {
         _count: {
           deviceName: 'desc'
@@ -60,11 +55,6 @@ export async function GET() {
       by: ['businessName'],
       _count: {
         businessName: true
-      },
-      where: {
-        businessName: {
-          not: null
-        }
       },
       orderBy: {
         _count: {
@@ -105,11 +95,6 @@ export async function GET() {
       by: ['operatingPersonnel'],
       _count: {
         operatingPersonnel: true
-      },
-      where: {
-        operatingPersonnel: {
-          not: null
-        }
       },
       orderBy: {
         _count: {

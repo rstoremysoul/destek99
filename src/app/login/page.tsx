@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { mockLogin } from '@/lib/auth'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
@@ -23,12 +22,19 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const user = await mockLogin(username, password)
-      if (user) {
-        login(user)
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        login(data.user)
         router.push('/dashboard')
       } else {
-        setError('Kullanıcı adı veya şifre hatalı')
+        setError(data.message || 'Giriş başarısız')
       }
     } catch (err) {
       setError('Giriş yapılırken bir hata oluştu')
@@ -42,9 +48,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Destek Yönetimi</CardTitle>
-          <CardDescription>
-            Hesabınıza giriş yapın
-          </CardDescription>
+          <CardDescription>Hesabınıza giriş yapın</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,11 +77,7 @@ export default function LoginPage() {
             {error && (
               <div className="text-red-600 text-sm text-center">{error}</div>
             )}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             </Button>
           </form>
@@ -92,3 +92,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-import { Device, InstallationForm, CargoTracking, DeviceRepair, InstallationDevice, CargoDevice, RepairPart, RepairNote } from '@/types'
+﻿import { Device, InstallationForm, CargoTracking, DeviceRepair, InstallationDevice, CargoDevice, RepairPart, RepairNote, Vendor, VendorProduct } from '@/types'
 
 export const mockDevices: Device[] = [
   {
@@ -283,5 +283,281 @@ export const mockDeviceRepairs: DeviceRepair[] = [
     ],
     createdAt: new Date('2024-03-15'),
     updatedAt: new Date('2024-03-19')
+  }
+]
+
+export const mockVendors: Vendor[] = [
+  {
+    id: 'VENDOR001',
+    name: 'Micros',
+    type: 'manufacturer',
+    contactPerson: 'Can Yılmaz',
+    contactPhone: '+90 212 555 0101',
+    contactEmail: 'can.yilmaz@micros.com',
+    address: 'İstanbul, Türkiye',
+    notes: 'POS cihazları üreticisi ve servis sağlayıcısı',
+    active: true,
+    createdAt: new Date('2023-01-10'),
+    updatedAt: new Date('2024-03-20')
+  },
+  {
+    id: 'VENDOR002',
+    name: 'RobotPOS',
+    type: 'manufacturer',
+    contactPerson: 'Elif Demir',
+    contactPhone: '+90 216 555 0202',
+    contactEmail: 'elif.demir@robotpos.com',
+    address: 'Ankara, Türkiye',
+    notes: 'Yerli POS çözümleri üreticisi',
+    active: true,
+    createdAt: new Date('2023-02-15'),
+    updatedAt: new Date('2024-03-20')
+  },
+  {
+    id: 'VENDOR003',
+    name: 'Epson Servis',
+    type: 'service_provider',
+    contactPerson: 'Mehmet Kaya',
+    contactPhone: '+90 312 555 0303',
+    contactEmail: 'mehmet.kaya@epsonservis.com',
+    address: 'İzmir, Türkiye',
+    notes: 'Epson yazıcı servisi',
+    active: true,
+    createdAt: new Date('2023-03-20'),
+    updatedAt: new Date('2024-03-20')
+  },
+  {
+    id: 'VENDOR004',
+    name: 'HP Authorized Service',
+    type: 'service_provider',
+    contactPerson: 'Ayşe Öztürk',
+    contactPhone: '+90 212 555 0404',
+    contactEmail: 'ayse.ozturk@hpservice.com',
+    address: 'İstanbul, Türkiye',
+    notes: 'HP yetkili servisi',
+    active: true,
+    createdAt: new Date('2023-04-10'),
+    updatedAt: new Date('2024-03-20')
+  }
+]
+
+export const mockVendorProducts: VendorProduct[] = [
+  {
+    id: 'VP001',
+    vendorId: 'VENDOR001',
+    vendorName: 'Micros',
+    productType: 'pos',
+    productName: 'Micros Workstation 6',
+    model: 'WS6-700',
+    serialNumber: 'MICROS001ABC',
+    businessName: 'Cafe Istanbul',
+    companyId: '1',
+    currentStatus: 'at_vendor',
+    entryDate: new Date('2024-03-18'),
+    estimatedCompletionDate: new Date('2024-03-25'),
+    problemDescription: 'Ekran dokunmatik çalışmıyor, güç tuşu arızalı',
+    vendorAction: 'Ekran değişimi yapılacak',
+    cost: 1500,
+    isPaidByVendor: true,
+    statusHistory: [
+      {
+        id: 'VPSH001',
+        status: 'at_vendor',
+        statusDate: new Date('2024-03-18'),
+        notes: 'Cihaz tedarikçiye gönderildi',
+        updatedBy: '2',
+        updatedByName: 'Ahmet Yılmaz'
+      }
+    ],
+    notes: 'Garanti kapsamında',
+    createdAt: new Date('2024-03-18'),
+    updatedAt: new Date('2024-03-18')
+  },
+  {
+    id: 'VP002',
+    vendorId: 'VENDOR001',
+    vendorName: 'Micros',
+    productType: 'pos',
+    productName: 'Micros Workstation 5A',
+    model: 'WS5A-500',
+    serialNumber: 'MICROS002XYZ',
+    businessName: 'Restaurant Moda',
+    companyId: '2',
+    currentStatus: 'in_testing',
+    entryDate: new Date('2024-03-10'),
+    exitDate: new Date('2024-03-20'),
+    problemDescription: 'Yazılım güncellemesi sonrası açılmıyor',
+    vendorAction: 'Yazılım yeniden yüklendi',
+    cost: 0,
+    isPaidByVendor: true,
+    statusHistory: [
+      {
+        id: 'VPSH002',
+        status: 'at_vendor',
+        statusDate: new Date('2024-03-10'),
+        notes: 'Cihaz tedarikçiye gönderildi',
+        updatedBy: '2',
+        updatedByName: 'Ahmet Yılmaz'
+      },
+      {
+        id: 'VPSH003',
+        status: 'in_testing',
+        statusDate: new Date('2024-03-20'),
+        notes: 'Tamir tamamlandı, test ediliyor',
+        updatedBy: '3',
+        updatedByName: 'Ayşe Demir'
+      }
+    ],
+    notes: 'Garanti kapsamında ücretsiz tamir',
+    createdAt: new Date('2024-03-10'),
+    updatedAt: new Date('2024-03-20')
+  },
+  {
+    id: 'VP003',
+    vendorId: 'VENDOR002',
+    vendorName: 'RobotPOS',
+    productType: 'pos',
+    productName: 'Robot POS X5',
+    model: 'RPX5-PRO',
+    serialNumber: 'ROBOT001ABC',
+    businessName: 'Market 24',
+    companyId: '3',
+    currentStatus: 'at_vendor',
+    entryDate: new Date('2024-03-15'),
+    estimatedCompletionDate: new Date('2024-03-22'),
+    problemDescription: 'Termal yazıcı çalışmıyor',
+    vendorAction: 'Yazıcı kafası değişimi',
+    cost: 850,
+    isPaidByVendor: false,
+    statusHistory: [
+      {
+        id: 'VPSH004',
+        status: 'at_vendor',
+        statusDate: new Date('2024-03-15'),
+        notes: 'Tedarikçide tamir için bekliyor',
+        updatedBy: '2',
+        updatedByName: 'Ahmet Yılmaz'
+      }
+    ],
+    notes: 'Garanti dışı, ücretli tamir',
+    createdAt: new Date('2024-03-15'),
+    updatedAt: new Date('2024-03-15')
+  },
+  {
+    id: 'VP004',
+    vendorId: 'VENDOR002',
+    vendorName: 'RobotPOS',
+    productType: 'pos',
+    productName: 'Robot POS Mini',
+    model: 'RPM-2024',
+    serialNumber: 'ROBOT002DEF',
+    businessName: 'Kafe Latte',
+    companyId: '1',
+    currentStatus: 'completed',
+    entryDate: new Date('2024-03-01'),
+    exitDate: new Date('2024-03-12'),
+    problemDescription: 'Barkod okuyucu arızalı',
+    vendorAction: 'Barkod okuyucu değiştirildi',
+    cost: 0,
+    isPaidByVendor: true,
+    statusHistory: [
+      {
+        id: 'VPSH005',
+        status: 'at_vendor',
+        statusDate: new Date('2024-03-01'),
+        notes: 'Cihaz tedarikçiye gönderildi',
+        updatedBy: '2',
+        updatedByName: 'Ahmet Yılmaz'
+      },
+      {
+        id: 'VPSH006',
+        status: 'in_transit',
+        statusDate: new Date('2024-03-12'),
+        notes: 'Tamir tamamlandı, kargoya verildi',
+        updatedBy: '2',
+        updatedByName: 'Ahmet Yılmaz'
+      },
+      {
+        id: 'VPSH007',
+        status: 'completed',
+        statusDate: new Date('2024-03-14'),
+        notes: 'Müşteriye teslim edildi',
+        updatedBy: '3',
+        updatedByName: 'Ayşe Demir'
+      }
+    ],
+    notes: 'Başarılı şekilde tamamlandı',
+    createdAt: new Date('2024-03-01'),
+    updatedAt: new Date('2024-03-14')
+  },
+  {
+    id: 'VP005',
+    vendorId: 'VENDOR003',
+    vendorName: 'Epson Servis',
+    productType: 'printer',
+    productName: 'Epson TM-T88VI',
+    model: 'TM-T88VI',
+    serialNumber: 'EPSON001XYZ',
+    businessName: 'Süpermarket Plus',
+    companyId: '2',
+    currentStatus: 'in_testing',
+    entryDate: new Date('2024-03-12'),
+    exitDate: new Date('2024-03-19'),
+    problemDescription: 'Kağıt sıkışması sürekli oluyor',
+    vendorAction: 'Kağıt yolu temizlendi ve sensör ayarlandı',
+    cost: 0,
+    isPaidByVendor: true,
+    statusHistory: [
+      {
+        id: 'VPSH008',
+        status: 'at_vendor',
+        statusDate: new Date('2024-03-12'),
+        notes: 'Epson servise gönderildi',
+        updatedBy: '3',
+        updatedByName: 'Ayşe Demir'
+      },
+      {
+        id: 'VPSH009',
+        status: 'in_testing',
+        statusDate: new Date('2024-03-19'),
+        notes: 'Tamir tamamlandı, ofiste test ediliyor',
+        updatedBy: '2',
+        updatedByName: 'Ahmet Yılmaz'
+      }
+    ],
+    notes: 'Garanti kapsamında tamir edildi',
+    createdAt: new Date('2024-03-12'),
+    updatedAt: new Date('2024-03-19')
+  },
+  {
+    id: 'VP006',
+    vendorId: 'VENDOR004',
+    vendorName: 'HP Authorized Service',
+    productType: 'printer',
+    productName: 'HP LaserJet Pro M404dn',
+    model: 'M404dn',
+    serialNumber: 'HP001ABC123',
+    businessName: 'Ofis Merkezi A.Ş.',
+    companyId: '3',
+    currentStatus: 'at_vendor',
+    entryDate: new Date('2024-03-16'),
+    estimatedCompletionDate: new Date('2024-03-28'),
+    problemDescription: 'Kağıt besleme ünitesi arızalı, toner kartuşu tanımıyor',
+    vendorAction: 'Besleme ünitesi ve toner sensörü değişimi',
+    cost: 1200,
+    isPaidByVendor: false,
+    statusHistory: [
+      {
+        id: 'VPSH010',
+        status: 'at_vendor',
+        statusDate: new Date('2024-03-16'),
+        notes: 'HP servise gönderildi, parça bekliyor',
+        updatedBy: '2',
+        updatedByName: 'Ahmet Yılmaz'
+      }
+    ],
+    notes: 'Garanti dışı, parça bekliyor',
+    createdAt: new Date('2024-03-16'),
+    updatedAt: new Date('2024-03-16')
   }
 ]

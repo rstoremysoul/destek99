@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { db } from '../../../lib/db'
 
 export async function GET() {
   try {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     const record = await db.technicalService.create({
       data: {
-        operatingPersonnel: body.operatingPersonnel,
+        operatingPersonnel: body.operatingPersonnel || null,
         invoiceDate: body.invoiceDate ? new Date(body.invoiceDate) : null,
         brand: body.brand,
         businessName: body.businessName,
@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
         deviceProblem: body.deviceProblem,
         problemDescription: body.problemDescription,
         performedAction: body.performedAction,
-        serviceCost: body.serviceCost,
-        customerCost: body.customerCost,
+        serviceCost: body.serviceCost ? parseFloat(body.serviceCost) : null,
+        customerCost: body.customerCost ? parseFloat(body.customerCost) : null,
         approvedBy: body.approvedBy,
         connectWritten: body.connectWritten,
       }
@@ -69,7 +69,7 @@ export async function PUT(request: NextRequest) {
     const record = await db.technicalService.update({
       where: { id: Number(id) },
       data: {
-        operatingPersonnel: data.operatingPersonnel,
+        operatingPersonnel: data.operatingPersonnel || null,
         invoiceDate: data.invoiceDate ? new Date(data.invoiceDate) : null,
         brand: data.brand,
         businessName: data.businessName,
@@ -81,8 +81,8 @@ export async function PUT(request: NextRequest) {
         deviceProblem: data.deviceProblem,
         problemDescription: data.problemDescription,
         performedAction: data.performedAction,
-        serviceCost: data.serviceCost,
-        customerCost: data.customerCost,
+        serviceCost: data.serviceCost ? parseFloat(data.serviceCost) : null,
+        customerCost: data.customerCost ? parseFloat(data.customerCost) : null,
         approvedBy: data.approvedBy,
         connectWritten: data.connectWritten,
         vendorName: data.vendorName,

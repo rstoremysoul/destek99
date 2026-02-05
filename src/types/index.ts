@@ -1,9 +1,20 @@
-export interface User {
+﻿export interface User {
   id: string
   username: string
   email: string
   name: string
   role: 'admin' | 'technician' | 'manager'
+}
+
+export interface Technician {
+  id: string
+  name: string
+  phone?: string
+  email?: string
+  specialization?: string
+  active: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface SupportTicket {
@@ -74,6 +85,8 @@ export interface InstallationForm {
   companyName: string
   customerId: string
   customerName: string
+  technicianId?: string
+  technicianName?: string
   requestDate: Date
   plannedInstallDate: Date
   actualInstallDate?: Date
@@ -84,8 +97,6 @@ export interface InstallationForm {
   contactPerson: string
   contactPhone: string
   notes: string
-  assignedTechnician?: string
-  technicianName?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -142,12 +153,12 @@ export interface DeviceRepair {
   companyName: string
   customerId: string
   customerName: string
+  technicianId?: string
+  technicianName?: string
   receivedDate: Date
   problemDescription: string
   status: 'received' | 'diagnosing' | 'waiting_parts' | 'repairing' | 'testing' | 'completed' | 'unrepairable'
   priority: 'low' | 'medium' | 'high' | 'urgent'
-  assignedTechnician?: string
-  technicianName?: string
   estimatedCompletionDate?: Date
   actualCompletionDate?: Date
   repairCost?: number
@@ -189,4 +200,104 @@ export interface DeviceLocation {
   contactPhone?: string
   updatedAt: Date
   updatedBy: string
+}
+
+export interface Vendor {
+  id: string
+  name: string
+  type: 'manufacturer' | 'service_provider' | 'distributor'
+  contactPerson?: string
+  contactPhone?: string
+  contactEmail?: string
+  address?: string
+  notes?: string
+  active: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface VendorProduct {
+  id: string
+  vendorId: string
+  vendorName: string
+  productType: 'pos' | 'printer' | 'server' | 'network' | 'other'
+  productName: string
+  model: string
+  serialNumber: string
+  businessName: string
+  companyId: string
+  currentStatus: 'at_vendor' | 'in_testing' | 'in_transit' | 'completed' | 'returned'
+  entryDate: Date
+  exitDate?: Date
+  estimatedCompletionDate?: Date
+  problemDescription: string
+  vendorAction?: string
+  cost?: number
+  isPaidByVendor: boolean
+  statusHistory: ProductStatusHistory[]
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface ProductStatusHistory {
+  id: string
+  status: 'at_vendor' | 'in_testing' | 'in_transit' | 'completed' | 'returned'
+  statusDate: Date
+  notes?: string
+  updatedBy: string
+  updatedByName: string
+}
+
+export interface Location {
+  id: string
+  name: string
+  address: string
+  city?: string
+  district?: string
+  phone?: string
+  contactPerson?: string
+  type?: 'warehouse' | 'customer' | 'service_center' | 'branch' | 'headquarters'
+  active: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface EquivalentDevice {
+  id: string
+  deviceNumber: string
+  deviceName: string
+  brand: string
+  model: string
+  serialNumber: string
+  currentLocation: 'in_warehouse' | 'on_site_service' | 'at_customer'
+  status: 'available' | 'in_use' | 'in_maintenance' | 'reserved' | 'retired' | 'passive'
+  assignedToId?: string
+  assignedTo?: Location
+  assignedDate?: Date
+  purchaseDate?: Date
+  warrantyEnd?: Date
+  condition: 'new' | 'excellent' | 'good' | 'fair' | 'poor'
+  images?: string
+  notes?: string
+  createdBy?: string
+  createdByName?: string
+  createdAt: Date
+  updatedAt: Date
+  history?: EquivalentDeviceHistory[]
+}
+
+export interface EquivalentDeviceHistory {
+  id: string
+  deviceId: string
+  previousLocation: 'in_warehouse' | 'on_site_service' | 'at_customer'
+  newLocation: 'in_warehouse' | 'on_site_service' | 'at_customer'
+  previousStatus?: 'available' | 'in_use' | 'in_maintenance' | 'reserved' | 'retired' | 'passive'
+  newStatus?: 'available' | 'in_use' | 'in_maintenance' | 'reserved' | 'retired' | 'passive'
+  assignedToId?: string
+  assignedToName?: string
+  notes?: string
+  changedBy: string
+  changedByName: string
+  changedAt: Date
 }
