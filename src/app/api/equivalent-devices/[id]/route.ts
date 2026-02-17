@@ -9,6 +9,9 @@ export async function GET(
   try {
     const device = await prisma.equivalentDevice.findUnique({
       where: { id: params.id },
+      include: {
+        location: true,
+      },
     })
 
     if (!device) {
@@ -18,11 +21,20 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(device)
+    return NextResponse.json({
+      ...device,
+      assignedTo: (device as any).location || null,
+      recordStatus: typeof (device as any).recordStatus === 'string' ? (device as any).recordStatus.toLowerCase() : 'open',
+    })
   } catch (error) {
     console.error('Error fetching equivalent device:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch equivalent device' },
+      {
+        error: 'Failed to fetch equivalent device',
+        details: process.env.NODE_ENV === 'production'
+          ? undefined
+          : (error instanceof Error ? error.message : 'Unknown error'),
+      },
       { status: 500 }
     )
   }
@@ -40,10 +52,10 @@ export async function PATCH(
       brand,
       model,
       serialNumber,
-      location,
-      apparatus,
+      currentLocation,
+      recordStatus,
       status,
-      assignedTo,
+      assignedToId,
       assignedDate,
       purchaseDate,
       warrantyEnd,
@@ -58,6 +70,7 @@ export async function PATCH(
       'in_maintenance': 'IN_MAINTENANCE',
       'reserved': 'RESERVED',
       'retired': 'RETIRED',
+      'passive': 'PASSIVE',
     }
 
     const conditionMap: { [key: string]: string } = {
@@ -68,6 +81,18 @@ export async function PATCH(
       'poor': 'POOR',
     }
 
+    const locationMap: { [key: string]: string } = {
+      'in_warehouse': 'IN_WAREHOUSE',
+      'on_site_service': 'ON_SITE_SERVICE',
+      'at_customer': 'AT_CUSTOMER',
+    }
+
+    const recordStatusMap: { [key: string]: string } = {
+      'open': 'OPEN',
+      'on_hold': 'ON_HOLD',
+      'closed': 'CLOSED',
+    }
+
     const device = await prisma.equivalentDevice.update({
       where: { id: params.id },
       data: {
@@ -75,10 +100,10 @@ export async function PATCH(
         brand,
         model,
         serialNumber,
-        location,
-        apparatus,
+        currentLocation: currentLocation ? (locationMap[currentLocation.toLowerCase()] || undefined) : undefined,
+        recordStatus: recordStatus ? (recordStatusMap[String(recordStatus).toLowerCase()] || undefined) : undefined,
         status: status ? statusMap[status.toLowerCase()] : undefined,
-        assignedTo,
+        assignedToId: assignedToId || null,
         assignedDate: assignedDate ? new Date(assignedDate) : null,
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         warrantyEnd: warrantyEnd ? new Date(warrantyEnd) : null,
@@ -87,11 +112,25 @@ export async function PATCH(
       },
     })
 
-    return NextResponse.json(device)
+    const hydrated = await prisma.equivalentDevice.findUnique({
+      where: { id: params.id },
+      include: { location: true },
+    })
+
+    return NextResponse.json({
+      ...hydrated,
+      assignedTo: (hydrated as any)?.location || null,
+      recordStatus: typeof (hydrated as any)?.recordStatus === 'string' ? (hydrated as any).recordStatus.toLowerCase() : 'open',
+    })
   } catch (error) {
     console.error('Error updating equivalent device:', error)
     return NextResponse.json(
-      { error: 'Failed to update equivalent device' },
+      {
+        error: 'Failed to update equivalent device',
+        details: process.env.NODE_ENV === 'production'
+          ? undefined
+          : (error instanceof Error ? error.message : 'Unknown error'),
+      },
       { status: 500 }
     )
   }
@@ -111,7 +150,12 @@ export async function DELETE(
   } catch (error) {
     console.error('Error deleting equivalent device:', error)
     return NextResponse.json(
-      { error: 'Failed to delete equivalent device' },
+      {
+        error: 'Failed to delete equivalent device',
+        details: process.env.NODE_ENV === 'production'
+          ? undefined
+          : (error instanceof Error ? error.message : 'Unknown error'),
+      },
       { status: 500 }
     )
   }

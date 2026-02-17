@@ -45,6 +45,22 @@ async function main() {
             console.log(`Warehouse already exists: ${wh.name}`)
         }
     }
+
+    // Create default cargo companies
+    const cargoCompanies = [
+        'MNG Kargo',
+        'Aras Kargo',
+        'Yurtiçi Kargo',
+    ]
+
+    for (const companyName of cargoCompanies) {
+        await prisma.cargoCompany.upsert({
+            where: { name: companyName },
+            update: { active: true },
+            create: { name: companyName, active: true },
+        })
+        console.log(`Cargo company ready: ${companyName}`)
+    }
 }
 
 main()

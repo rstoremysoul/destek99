@@ -116,17 +116,54 @@ export interface InstallationDevice {
 export interface CargoTracking {
   id: string
   trackingNumber: string
-  type: 'incoming' | 'outgoing'
+  type: 'incoming' | 'outgoing' | 'on_site_service' | 'installation_team'
   status: 'in_transit' | 'delivered' | 'returned' | 'lost' | 'damaged'
+  recordStatus?: 'open' | 'on_hold' | 'closed' | 'device_repair'
   sender: string
   receiver: string
   cargoCompany: string
   sentDate?: Date
   deliveredDate?: Date
+  currentLocationName?: string | null
   devices: CargoDevice[]
   destination: 'customer' | 'distributor' | 'branch' | 'headquarters'
   destinationAddress: string
   notes: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface CargoRepairTicket {
+  id: string
+  trackingNumber: string
+  sender: string
+  receiver: string
+  cargoCompany: string
+  currentLocationName?: string | null
+  recordStatus?: 'open' | 'on_hold' | 'closed' | 'device_repair'
+  devices: CargoDevice[]
+  technicianName?: string
+  operations: string[]
+  spareParts?: Array<{
+    name: string
+    quantity: number
+    unitCost: number
+  }>
+  laborCost?: number
+  partsCost?: number
+  totalCost?: number
+  imageUrl?: string
+  repairNote?: string
+  repairHistory: Array<{
+    at: string
+    action: string
+    technicianName?: string
+    operations?: string[]
+    note?: string
+    laborCost?: number
+    partsCost?: number
+    totalCost?: number
+  }>
   createdAt: Date
   updatedAt: Date
 }
@@ -137,6 +174,10 @@ export interface CargoDevice {
   deviceName: string
   model: string
   serialNumber: string
+  deviceSource?: 'equivalent' | 'customer' | 'other'
+  equivalentDeviceId?: string
+  customerName?: string
+  customerCompanyName?: string
   quantity: number
   condition: 'new' | 'used' | 'refurbished' | 'damaged'
   purpose: 'installation' | 'replacement' | 'repair' | 'return'
@@ -271,6 +312,7 @@ export interface EquivalentDevice {
   model: string
   serialNumber: string
   currentLocation: 'in_warehouse' | 'on_site_service' | 'at_customer'
+  recordStatus?: 'open' | 'on_hold' | 'closed'
   status: 'available' | 'in_use' | 'in_maintenance' | 'reserved' | 'retired' | 'passive'
   assignedToId?: string
   assignedTo?: Location

@@ -53,15 +53,35 @@ interface Movement {
     };
 }
 
+interface InventoryItem {
+    id: string;
+    deviceNumber: string;
+    deviceName: string;
+    brand: string;
+    model: string;
+    serialNumber: string;
+    status: string;
+    condition: string;
+    currentLocation: string;
+    location: {
+        id: string;
+        name: string;
+        type: string | null;
+    } | null;
+}
+
 export default function WarehousesPage() {
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [movements, setMovements] = useState<Movement[]>([]);
+    const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [movementsLoading, setMovementsLoading] = useState(false);
+    const [inventoryLoading, setInventoryLoading] = useState(false);
     const [selectedWarehouse, setSelectedWarehouse] = useState('all');
+    const [inventoryWarehouse, setInventoryWarehouse] = useState('all');
     const [movementType, setMovementType] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState('warehouses');
+    const [activeTab, setActiveTab] = useState('inventory');
 
     // Fetch warehouses for filter dropdown
     const fetchWarehouses = async () => {
@@ -103,9 +123,29 @@ export default function WarehousesPage() {
         }
     };
 
+    const fetchInventory = async () => {
+        try {
+            setInventoryLoading(true);
+            let url = '/api/warehouses/inventory';
+            if (inventoryWarehouse !== 'all') {
+                url += `?locationId=${inventoryWarehouse}`;
+            }
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                setInventory(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch inventory', error);
+        } finally {
+            setInventoryLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchWarehouses();
         fetchMovements();
+        fetchInventory();
     }, []);
 
     useEffect(() => {
@@ -113,6 +153,12 @@ export default function WarehousesPage() {
             fetchMovements();
         }
     }, [selectedWarehouse, movementType, activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'inventory') {
+            fetchInventory();
+        }
+    }, [inventoryWarehouse, activeTab]);
 
     const getIcon = (type: string | null) => {
         switch (type) {
@@ -251,6 +297,18 @@ export default function WarehousesPage() {
         );
     });
 
+    const filteredInventory = inventory.filter(item => {
+        if (!searchTerm) return true;
+        const search = searchTerm.toLowerCase();
+        return (
+            item.deviceName?.toLowerCase().includes(search) ||
+            item.serialNumber?.toLowerCase().includes(search) ||
+            item.model?.toLowerCase().includes(search) ||
+            item.brand?.toLowerCase().includes(search) ||
+            item.location?.name?.toLowerCase().includes(search)
+        );
+    });
+
     // Stats
     const stats = {
         totalWarehouses: warehouses.length,
@@ -328,7 +386,11 @@ export default function WarehousesPage() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsList className="grid w-full max-w-xl grid-cols-3">
+                    <TabsTrigger value="inventory" className="flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        Envanter ({filteredInventory.length})
+                    </TabsTrigger>
                     <TabsTrigger value="warehouses" className="flex items-center gap-2">
                         <Building2 className="h-4 w-4" />
                         Depolar ({filteredWarehouses.length})
@@ -338,6 +400,100 @@ export default function WarehousesPage() {
                         Hareketler ({filteredMovements.length})
                     </TabsTrigger>
                 </TabsList>
+
+                {/* Inventory Tab */}
+                <TabsContent value="inventory" className="mt-6 space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Filter className="h-5 w-5" />
+                                Envanter Filtreleri
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Select value={inventoryWarehouse} onValueChange={setInventoryWarehouse}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Depo Seçin" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Tüm Depolar</SelectItem>
+                                        {warehouses.map(wh => (
+                                            <SelectItem key={wh.id} value={wh.id}>
+                                                {wh.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Envanter Kayıtları</CardTitle>
+                            <CardDescription>
+                                {filteredInventory.length} kayıt gösteriliyor
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                {inventoryLoading ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                                    </div>
+                                ) : filteredInventory.length > 0 ? (
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="border-b bg-muted/50">
+                                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Cihaz</th>
+                                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Marka / Model</th>
+                                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Seri No</th>
+                                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
+                                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Depo</th>
+                                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Konum</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredInventory.map((item) => (
+                                                <tr key={item.id} className="border-b transition-colors hover:bg-muted/50">
+                                                    <td className="p-4 align-middle">
+                                                        <div className="font-medium">{item.deviceName}</div>
+                                                        <div className="text-xs text-muted-foreground font-mono">{item.deviceNumber}</div>
+                                                    </td>
+                                                    <td className="p-4 align-middle">
+                                                        <div className="text-sm">{item.brand} {item.model}</div>
+                                                        <div className="text-xs text-muted-foreground">{item.condition}</div>
+                                                    </td>
+                                                    <td className="p-4 align-middle font-mono text-xs">
+                                                        {item.serialNumber}
+                                                    </td>
+                                                    <td className="p-4 align-middle">
+                                                        {getStatusBadge(item.status)}
+                                                    </td>
+                                                    <td className="p-4 align-middle">
+                                                        {item.location?.name || '-'}
+                                                    </td>
+                                                    <td className="p-4 align-middle">
+                                                        {getLocationLabel(item.currentLocation)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                                        <h3 className="text-lg font-medium">Envanter Kaydı Bulunamadı</h3>
+                                        <p className="text-muted-foreground mt-1">
+                                            Bu filtreler için envanter kaydı yok.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
                 {/* Warehouses Tab */}
                 <TabsContent value="warehouses" className="mt-6">

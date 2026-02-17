@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { EquivalentDevice } from '@/types'
-import { Plus, Search, Eye, Package, CheckCircle, Wrench, Box } from 'lucide-react'
+import { Plus, Search, Eye, Package, CheckCircle, Wrench, Box, Lock, PauseCircle, Pencil, Trash2 } from 'lucide-react'
 import { EquivalentDeviceFormDialog } from '@/components/equivalent-device-form-dialog'
+import { toast } from 'sonner'
 
 export default function EquivalentDevicesPage() {
   const [devices, setDevices] = useState<EquivalentDevice[]>([])
@@ -21,7 +22,10 @@ export default function EquivalentDevicesPage() {
   const [conditionFilter, setConditionFilter] = useState('all')
   const [brandFilter, setBrandFilter] = useState('all')
   const [locationFilter, setLocationFilter] = useState('all')
+  const [recordStatusFilter, setRecordStatusFilter] = useState<'open' | 'on_hold' | 'closed' | 'all'>('open')
   const [currentPage, setCurrentPage] = useState(1)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingDevice, setEditingDevice] = useState<EquivalentDevice | null>(null)
   const router = useRouter()
 
   const recordsPerPage = 20
@@ -29,6 +33,10 @@ export default function EquivalentDevicesPage() {
   useEffect(() => {
     fetchDevices()
   }, [])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, conditionFilter, brandFilter, locationFilter, recordStatusFilter])
 
   const fetchDevices = async () => {
     try {
@@ -44,6 +52,7 @@ export default function EquivalentDevicesPage() {
           model: item.model,
           serialNumber: item.serialNumber,
           currentLocation: item.currentLocation.toLowerCase(),
+          recordStatus: item.recordStatus ? String(item.recordStatus).toLowerCase() : 'open',
           status: item.status.toLowerCase(),
           assignedToId: item.assignedToId,
           assignedTo: item.assignedTo,
@@ -83,12 +92,30 @@ export default function EquivalentDevicesPage() {
     const matchesCondition = conditionFilter === 'all' || device.condition === conditionFilter
     const matchesBrand = brandFilter === 'all' || device.brand === brandFilter
     const matchesLocation = locationFilter === 'all' || device.currentLocation === locationFilter
+    const matchesRecordStatus =
+      recordStatusFilter === 'all' ||
+      device.recordStatus === recordStatusFilter
 
-    return matchesSearch && matchesStatus && matchesCondition && matchesBrand && matchesLocation
+    return matchesSearch && matchesStatus && matchesCondition && matchesBrand && matchesLocation && matchesRecordStatus
   })
 
-  const totalPages = Math.ceil(filteredDevices.length / recordsPerPage)
-  const paginatedDevices = filteredDevices.slice(
+  const getRecordStatusOrder = (status?: string) => {
+    switch (status) {
+      case 'open': return 0
+      case 'on_hold': return 1
+      case 'closed': return 2
+      default: return 0
+    }
+  }
+
+  const sortedFilteredDevices = [...filteredDevices].sort((a, b) => {
+    const orderDiff = getRecordStatusOrder(a.recordStatus) - getRecordStatusOrder(b.recordStatus)
+    if (orderDiff !== 0) return orderDiff
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+
+  const totalPages = Math.ceil(sortedFilteredDevices.length / recordsPerPage)
+  const paginatedDevices = sortedFilteredDevices.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
   )
@@ -139,6 +166,15 @@ export default function EquivalentDevicesPage() {
     }
   }
 
+  const getRecordStatusText = (status?: string) => {
+    switch (status) {
+      case 'open': return 'Açık'
+      case 'on_hold': return 'Beklemede'
+      case 'closed': return 'Kapalı'
+      default: return 'Açık'
+    }
+  }
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('tr-TR').format(date)
   }
@@ -165,6 +201,72 @@ export default function EquivalentDevicesPage() {
       }
     } catch (error) {
       console.error('Error creating device:', error)
+    }
+  }
+
+  const handleUpdateDevice = async (deviceId: string, updatedDevice: Partial<EquivalentDevice>) => {
+    try {
+      const response = await fetch(`/api/equivalent-devices/${deviceId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedDevice),
+      })
+
+      if (response.ok) {
+        fetchDevices()
+      } else {
+        console.error('Failed to update device')
+      }
+    } catch (error) {
+      console.error('Error updating device:', error)
+    }
+  }
+
+  const handleUpdateRecordStatus = async (deviceId: string, newStatus: 'open' | 'on_hold' | 'closed') => {
+    try {
+      const response = await fetch(`/api/equivalent-devices/${deviceId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recordStatus: newStatus,
+        }),
+      })
+
+      if (response.ok) {
+        fetchDevices()
+      } else {
+        console.error('Failed to update device record status')
+      }
+    } catch (error) {
+      console.error('Error updating device record status:', error)
+    }
+  }
+
+  const handleDeleteDevice = async (device: EquivalentDevice) => {
+    const ok = window.confirm(
+      `${device.deviceNumber} - ${device.deviceName} cihazını silmek istediğinize emin misiniz?`
+    )
+    if (!ok) return
+
+    try {
+      const response = await fetch(`/api/equivalent-devices/${device.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Muadil cihaz silindi')
+        fetchDevices()
+      } else {
+        const data = await response.json().catch(() => null)
+        toast.error(data?.error || 'Cihaz silinemedi')
+      }
+    } catch (error) {
+      console.error('Error deleting device:', error)
+      toast.error('Cihaz silinirken hata oluştu')
     }
   }
 
@@ -213,7 +315,7 @@ export default function EquivalentDevicesPage() {
         </div>
 
         {/* Filtre Satırı */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Select value={brandFilter} onValueChange={setBrandFilter}>
             <SelectTrigger>
               <SelectValue placeholder="Marka Filtresi" />
@@ -268,10 +370,25 @@ export default function EquivalentDevicesPage() {
               <SelectItem value="poor">Zayıf</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select
+            value={recordStatusFilter}
+            onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'all') => setRecordStatusFilter(value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Kayıt Durumu" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="open">Açık Kayıtlar</SelectItem>
+              <SelectItem value="on_hold">Beklemede</SelectItem>
+              <SelectItem value="closed">Kapalı Kayıtlar</SelectItem>
+              <SelectItem value="all">Tüm Kayıtlar</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Aktif Filtreler */}
-        {(brandFilter !== 'all' || locationFilter !== 'all' || statusFilter !== 'all' || conditionFilter !== 'all') && (
+        {(brandFilter !== 'all' || locationFilter !== 'all' || statusFilter !== 'all' || conditionFilter !== 'all' || recordStatusFilter !== 'open') && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Aktif Filtreler:</span>
             {brandFilter !== 'all' && (
@@ -298,6 +415,11 @@ export default function EquivalentDevicesPage() {
                 Kondisyon: {getConditionText(conditionFilter)} ✕
               </Badge>
             )}
+            {recordStatusFilter !== 'open' && (
+              <Badge variant="secondary" className="cursor-pointer" onClick={() => setRecordStatusFilter('open')}>
+                Kayıt: {recordStatusFilter === 'closed' ? 'Kapalı' : recordStatusFilter === 'on_hold' ? 'Beklemede' : 'Tümü'} ✕
+              </Badge>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -306,6 +428,7 @@ export default function EquivalentDevicesPage() {
                 setLocationFilter('all')
                 setStatusFilter('all')
                 setConditionFilter('all')
+                setRecordStatusFilter('open')
               }}
               className="text-xs"
             >
@@ -377,7 +500,7 @@ export default function EquivalentDevicesPage() {
         <CardHeader>
           <CardTitle>Cihaz Listesi</CardTitle>
           <CardDescription>
-            Toplam {filteredDevices.length} kayıt gösteriliyor
+            Toplam {sortedFilteredDevices.length} kayıt gösteriliyor
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -392,6 +515,7 @@ export default function EquivalentDevicesPage() {
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Seri No</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Muadil Konum</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kayıt</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kondisyon</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Atanan Lokasyon</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">İşlemler</th>
@@ -399,7 +523,16 @@ export default function EquivalentDevicesPage() {
               </thead>
               <tbody>
                 {paginatedDevices.map((device) => (
-                  <tr key={device.id} className="border-b transition-colors hover:bg-muted/50">
+                  <tr
+                    key={device.id}
+                    className={`border-b transition-colors hover:bg-muted/50 ${
+                      device.recordStatus === 'closed'
+                        ? 'bg-muted/40 text-muted-foreground border-l-4 border-l-muted-foreground/40'
+                        : device.recordStatus === 'on_hold'
+                          ? 'bg-amber-50/60 border-l-4 border-l-amber-500/60'
+                          : ''
+                    }`}
+                  >
                     <td className="p-4 align-middle font-medium">
                       {device.deviceNumber}
                     </td>
@@ -436,6 +569,12 @@ export default function EquivalentDevicesPage() {
                       </Badge>
                     </td>
                     <td className="p-4 align-middle">
+                      <Badge variant={device.recordStatus === 'closed' ? 'secondary' : device.recordStatus === 'on_hold' ? 'outline' : 'default'} className="gap-1">
+                        {device.recordStatus === 'closed' ? <Lock className="h-3 w-3" /> : device.recordStatus === 'on_hold' ? <PauseCircle className="h-3 w-3" /> : null}
+                        {getRecordStatusText(device.recordStatus)}
+                      </Badge>
+                    </td>
+                    <td className="p-4 align-middle">
                       <Badge variant={getConditionColor(device.condition)}>
                         {getConditionText(device.condition)}
                       </Badge>
@@ -444,14 +583,49 @@ export default function EquivalentDevicesPage() {
                       {device.assignedTo ? truncateText(device.assignedTo.name, 20) : '-'}
                     </td>
                     <td className="p-4 align-middle">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/equivalent-devices/${device.id}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Görüntüle
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/equivalent-devices/${device.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Görüntüle
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingDevice(device)
+                            setEditOpen(true)
+                          }}
+                          disabled={device.recordStatus === 'closed'}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Düzenle
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteDevice(device)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Sil
+                        </Button>
+                        <Select
+                          value={device.recordStatus || 'open'}
+                          onValueChange={(value: 'open' | 'on_hold' | 'closed') => handleUpdateRecordStatus(device.id, value)}
+                        >
+                          <SelectTrigger className="h-8 w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="open">Açık</SelectItem>
+                            <SelectItem value="on_hold">Beklemede</SelectItem>
+                            <SelectItem value="closed">Kapalı</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -465,10 +639,10 @@ export default function EquivalentDevicesPage() {
             )}
 
             {/* Sayfalama */}
-            {filteredDevices.length > 0 && (
+            {sortedFilteredDevices.length > 0 && (
               <div className="flex items-center justify-between px-2 py-4">
                 <div className="text-sm text-muted-foreground">
-                  {paginatedDevices.length} kayıt gösteriliyor (toplam {filteredDevices.length})
+                  {paginatedDevices.length} kayıt gösteriliyor (toplam {sortedFilteredDevices.length})
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button
@@ -502,7 +676,21 @@ export default function EquivalentDevicesPage() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSubmit={handleNewDevice}
+        mode="create"
       />
+
+      {editingDevice && (
+        <EquivalentDeviceFormDialog
+          open={editOpen}
+          onOpenChange={(open: boolean) => {
+            setEditOpen(open)
+            if (!open) setEditingDevice(null)
+          }}
+          onSubmit={(updated) => handleUpdateDevice(editingDevice.id, updated)}
+          initialData={editingDevice}
+          mode="edit"
+        />
+      )}
     </div>
   )
 }

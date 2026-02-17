@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { DeviceRepair } from '@/types'
+import { CargoRepairTicket, DeviceRepair } from '@/types'
 import { Plus, Search, Eye, Wrench, Calendar, CheckCircle, Clock, Shield } from 'lucide-react'
 import { RepairFormDialog } from '@/components/repair-form-dialog'
 
 export default function RepairsPage() {
   const [repairs, setRepairs] = useState<DeviceRepair[]>([])
+  const [cargoRepairs, setCargoRepairs] = useState<CargoRepairTicket[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -30,6 +31,7 @@ export default function RepairsPage() {
 
   useEffect(() => {
     fetchRepairs()
+    fetchCargoRepairs()
   }, [])
 
   const fetchRepairs = async () => {
@@ -74,6 +76,34 @@ export default function RepairsPage() {
       console.error('Error fetching repairs:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCargoRepairs = async () => {
+    try {
+      const response = await fetch('/api/cargo-repairs')
+      if (!response.ok) return
+      const data = await response.json()
+      const mapped = (Array.isArray(data) ? data : []).map((item: any) => ({
+        id: item.id,
+        trackingNumber: item.trackingNumber,
+        sender: item.sender,
+        receiver: item.receiver,
+        cargoCompany: item.cargoCompany || '',
+        currentLocationName: item.currentLocationName || null,
+        recordStatus: item.recordStatus || 'device_repair',
+        devices: item.devices || [],
+        technicianName: item.technicianName || '',
+        operations: item.operations || [],
+        imageUrl: item.imageUrl || '',
+        repairNote: item.repairNote || '',
+        repairHistory: item.repairHistory || [],
+        createdAt: new Date(item.createdAt),
+        updatedAt: new Date(item.updatedAt),
+      }))
+      setCargoRepairs(mapped)
+    } catch (error) {
+      console.error('Error fetching cargo repairs:', error)
     }
   }
 
@@ -488,6 +518,39 @@ export default function RepairsPage() {
           </Card>
         </div>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Kargodan Gelen Cihaz Tamiri Ticketları</CardTitle>
+          <CardDescription>
+            Kargo takipte durumu "Cihaz Tamiri" olan kayıtlar burada görünür.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {cargoRepairs.map((ticket) => (
+              <div key={ticket.id} className="border rounded-md p-3 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{ticket.trackingNumber}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {ticket.sender} → {ticket.receiver} • {ticket.devices.length} cihaz
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Teknisyen: {ticket.technicianName || 'Atanmadı'}
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/repairs/cargo/${ticket.id}`)}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Tamiri Yönet
+                </Button>
+              </div>
+            ))}
+            {cargoRepairs.length === 0 && (
+              <div className="text-sm text-muted-foreground">Aktif kargo tamir ticketı yok.</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tablo */}
       <Card>

@@ -6,18 +6,29 @@ export async function GET(request: NextRequest) {
   try {
     const devices = await prisma.equivalentDevice.findMany({
       include: {
-        assignedTo: true,
+        location: true,
       },
       orderBy: {
         createdAt: 'desc',
       },
     })
 
-    return NextResponse.json(devices)
+    const normalized = devices.map((device: any) => ({
+      ...device,
+      assignedTo: device.location || null,
+      recordStatus: typeof device.recordStatus === 'string' ? device.recordStatus.toLowerCase() : 'open',
+    }))
+
+    return NextResponse.json(normalized)
   } catch (error) {
     console.error('Error fetching equivalent devices:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch equivalent devices' },
+      {
+        error: 'Failed to fetch equivalent devices',
+        details: process.env.NODE_ENV === 'production'
+          ? undefined
+          : (error instanceof Error ? error.message : 'Unknown error'),
+      },
       { status: 500 }
     )
   }
@@ -34,6 +45,7 @@ export async function POST(request: NextRequest) {
       model,
       serialNumber,
       currentLocation,
+      recordStatus,
       status,
       assignedToId,
       assignedDate,
@@ -82,6 +94,12 @@ export async function POST(request: NextRequest) {
       'poor': 'POOR',
     }
 
+    const recordStatusMap: { [key: string]: string } = {
+      'open': 'OPEN',
+      'on_hold': 'ON_HOLD',
+      'closed': 'CLOSED',
+    }
+
     const device = await prisma.equivalentDevice.create({
       data: {
         deviceNumber,
@@ -90,6 +108,7 @@ export async function POST(request: NextRequest) {
         model,
         serialNumber,
         currentLocation: locationMap[currentLocation?.toLowerCase()] || 'IN_WAREHOUSE',
+        recordStatus: recordStatus ? (recordStatusMap[recordStatus?.toLowerCase()] || 'OPEN') : 'OPEN',
         status: statusMap[status?.toLowerCase()] || 'AVAILABLE',
         assignedToId: assignedToId || null,
         assignedDate: assignedDate ? new Date(assignedDate) : null,
@@ -102,7 +121,7 @@ export async function POST(request: NextRequest) {
         createdByName,
       },
       include: {
-        assignedTo: true,
+        location: true,
       },
     })
 
@@ -120,11 +139,22 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(device, { status: 201 })
+    return NextResponse.json(
+      {
+        ...device,
+        assignedTo: device.location || null,
+      },
+      { status: 201 }
+    )
   } catch (error) {
     console.error('Error creating equivalent device:', error)
     return NextResponse.json(
-      { error: 'Failed to create equivalent device' },
+      {
+        error: 'Failed to create equivalent device',
+        details: process.env.NODE_ENV === 'production'
+          ? undefined
+          : (error instanceof Error ? error.message : 'Unknown error'),
+      },
       { status: 500 }
     )
   }

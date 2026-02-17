@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CargoTracking } from '@/types'
-import { Plus, Search, Eye, Truck, Package, ArrowUp, ArrowDown, MapPin, ArrowRightLeft } from 'lucide-react'
+import { Plus, Search, Eye, Truck, Package, ArrowUp, ArrowDown, MapPin, ArrowRightLeft, Pencil, Lock, PauseCircle } from 'lucide-react'
 import { CargoFormDialog } from '@/components/cargo-form-dialog'
 import { CargoDispatchDialog } from '@/components/cargo-dispatch-dialog'
+import { toast } from 'sonner'
 
 export default function CargoPage() {
   const [cargos, setCargos] = useState<CargoTracking[]>([])
@@ -20,6 +21,7 @@ export default function CargoPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [recordStatusFilter, setRecordStatusFilter] = useState<'open' | 'on_hold' | 'closed' | 'device_repair' | 'all'>('open')
   const [destinationFilter, setDestinationFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('all')
   const [dateRangeStart, setDateRangeStart] = useState('')
@@ -27,6 +29,8 @@ export default function CargoPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [dispatchOpen, setDispatchOpen] = useState(false)
   const [selectedCargo, setSelectedCargo] = useState<CargoTracking | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingCargo, setEditingCargo] = useState<CargoTracking | null>(null)
   const router = useRouter()
 
   const recordsPerPage = 20
@@ -36,34 +40,44 @@ export default function CargoPage() {
     fetchCargos()
   }, [])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, typeFilter, statusFilter, recordStatusFilter, destinationFilter, dateFilter, dateRangeStart, dateRangeEnd])
+
   const fetchCargos = async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/cargo')
       if (response.ok) {
         const data = await response.json()
-        const mappedData = data.map((item: any) => ({
-          id: item.id,
-          trackingNumber: item.trackingNumber,
-          type: item.type.toLowerCase(),
-          status: item.status.toLowerCase(),
-          sender: item.sender,
-          receiver: item.receiver,
-          cargoCompany: item.cargoCompany,
-          sentDate: item.sentDate ? new Date(item.sentDate) : undefined,
-          deliveredDate: item.deliveredDate ? new Date(item.deliveredDate) : undefined,
-          destination: item.destination.toLowerCase(),
-          destinationAddress: item.destinationAddress,
-          notes: item.notes,
-          devices: item.devices.map((d: any) => ({
-            id: d.id,
-            deviceName: d.deviceName,
-            model: d.model,
-            serialNumber: d.serialNumber,
-            quantity: d.quantity,
-            condition: d.condition.toLowerCase(),
-            purpose: d.purpose.toLowerCase(),
-          })),
+          const mappedData = data.map((item: any) => ({
+            id: item.id,
+            trackingNumber: item.trackingNumber,
+            type: item.type.toLowerCase(),
+            status: item.status.toLowerCase(),
+            recordStatus: item.recordStatus ? String(item.recordStatus).toLowerCase() : 'open',
+            sender: item.sender,
+            receiver: item.receiver,
+            cargoCompany: item.cargoCompany,
+            sentDate: item.sentDate ? new Date(item.sentDate) : undefined,
+            deliveredDate: item.deliveredDate ? new Date(item.deliveredDate) : undefined,
+            currentLocationName: item.currentLocationName || null,
+            destination: item.destination.toLowerCase(),
+            destinationAddress: item.destinationAddress,
+            notes: item.notes,
+            devices: item.devices.map((d: any) => ({
+              id: d.id,
+              deviceName: d.deviceName,
+              model: d.model,
+              serialNumber: d.serialNumber,
+              deviceSource: d.deviceSource || 'other',
+              equivalentDeviceId: d.equivalentDeviceId || undefined,
+              customerName: d.customerName || undefined,
+              customerCompanyName: d.customerCompanyName || undefined,
+              quantity: d.quantity,
+              condition: d.condition.toLowerCase(),
+              purpose: d.purpose.toLowerCase(),
+            })),
           createdAt: new Date(item.createdAt),
           updatedAt: new Date(item.updatedAt),
         }))
@@ -111,6 +125,16 @@ export default function CargoPage() {
     }
   }
 
+  const getRecordStatusText = (status?: string) => {
+    switch (status) {
+      case 'open': return 'Açık'
+      case 'on_hold': return 'Beklemede'
+      case 'closed': return 'Kapalı'
+      case 'device_repair': return 'Cihaz Tamiri'
+      default: return 'Açık'
+    }
+  }
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('tr-TR').format(date)
   }
@@ -132,11 +156,60 @@ export default function CargoPage() {
 
       if (response.ok) {
         fetchCargos()
+        toast.success('Kargo kaydi olusturuldu')
       } else {
-        console.error('Failed to create cargo')
+        const error = await response.json().catch(() => null)
+        toast.error(error?.error || 'Kargo kaydi olusturulamadi')
+        console.error('Failed to create cargo', error)
       }
     } catch (error) {
+      toast.error('Kargo kaydi olusturulurken hata olustu')
       console.error('Error creating cargo:', error)
+    }
+  }
+
+  const handleUpdateCargo = async (cargoId: string, updatedCargo: Partial<CargoTracking>) => {
+    try {
+      const response = await fetch(`/api/cargo/${cargoId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedCargo),
+      })
+
+      if (response.ok) {
+        fetchCargos()
+      } else {
+        console.error('Failed to update cargo')
+      }
+    } catch (error) {
+      console.error('Error updating cargo:', error)
+    }
+  }
+
+  const handleUpdateRecordStatus = async (cargoId: string, newStatus: 'open' | 'on_hold' | 'closed' | 'device_repair') => {
+    try {
+      const response = await fetch(`/api/cargo/${cargoId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recordStatus: newStatus,
+        }),
+      })
+
+      if (response.ok) {
+        fetchCargos()
+      } else {
+        const error = await response.json().catch(() => null)
+        toast.error(error?.error || 'Kayıt durumu güncellenemedi')
+        console.error('Failed to update cargo record status', error)
+      }
+    } catch (error) {
+      toast.error('Kayıt durumu güncellenirken hata oluştu')
+      console.error('Error updating cargo record status:', error)
     }
   }
 
@@ -149,6 +222,11 @@ export default function CargoPage() {
 
     const matchesType = typeFilter === 'all' || cargo.type === typeFilter
     const matchesStatus = statusFilter === 'all' || cargo.status === statusFilter
+    const matchesRecordStatus =
+      recordStatusFilter === 'all' ||
+      (recordStatusFilter === 'open'
+        ? (cargo.recordStatus === 'open' || cargo.recordStatus === 'device_repair')
+        : cargo.recordStatus === recordStatusFilter)
     const matchesDestination = destinationFilter === 'all' || cargo.destination === destinationFilter
 
     // Tarih filtreleme
@@ -204,11 +282,27 @@ export default function CargoPage() {
       }
     }
 
-    return matchesSearch && matchesType && matchesStatus && matchesDestination && matchesDate
+    return matchesSearch && matchesType && matchesStatus && matchesRecordStatus && matchesDestination && matchesDate
   })
 
-  const totalPages = Math.ceil(filteredCargos.length / recordsPerPage)
-  const paginatedCargos = filteredCargos.slice(
+  const getRecordStatusOrder = (status?: string) => {
+    switch (status) {
+      case 'open': return 0
+      case 'on_hold': return 1
+      case 'device_repair': return 2
+      case 'closed': return 3
+      default: return 0
+    }
+  }
+
+  const sortedFilteredCargos = [...filteredCargos].sort((a, b) => {
+    const orderDiff = getRecordStatusOrder(a.recordStatus) - getRecordStatusOrder(b.recordStatus)
+    if (orderDiff !== 0) return orderDiff
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+
+  const totalPages = Math.ceil(sortedFilteredCargos.length / recordsPerPage)
+  const paginatedCargos = sortedFilteredCargos.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
   )
@@ -246,6 +340,8 @@ export default function CargoPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
+              id="cargo-search"
+              name="cargoSearch"
               placeholder="Takip no, gönderen, alıcı veya kargo şirketi ile ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -259,7 +355,7 @@ export default function CargoPage() {
         </div>
 
         {/* Filtre Satırı */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger>
               <SelectValue placeholder="Kargo Tipi" />
@@ -282,6 +378,22 @@ export default function CargoPage() {
               <SelectItem value="returned">İade Edildi</SelectItem>
               <SelectItem value="lost">Kayıp</SelectItem>
               <SelectItem value="damaged">Hasarlı</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={recordStatusFilter}
+            onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair' | 'all') => setRecordStatusFilter(value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Kayıt Durumu" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="open">Açık Kayıtlar (+ Tamirde)</SelectItem>
+              <SelectItem value="on_hold">Beklemede</SelectItem>
+              <SelectItem value="device_repair">Cihaz Tamiri</SelectItem>
+              <SelectItem value="closed">Kapalı Kayıtlar</SelectItem>
+              <SelectItem value="all">Tüm Kayıtlar</SelectItem>
             </SelectContent>
           </Select>
 
@@ -354,7 +466,7 @@ export default function CargoPage() {
         )}
 
         {/* Aktif Filtreler */}
-        {(typeFilter !== 'all' || statusFilter !== 'all' || destinationFilter !== 'all' || dateFilter !== 'all') && (
+        {(typeFilter !== 'all' || statusFilter !== 'all' || recordStatusFilter !== 'open' || destinationFilter !== 'all' || dateFilter !== 'all') && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Aktif Filtreler:</span>
             {typeFilter !== 'all' && (
@@ -365,6 +477,11 @@ export default function CargoPage() {
             {statusFilter !== 'all' && (
               <Badge variant="secondary" className="cursor-pointer" onClick={() => setStatusFilter('all')}>
                 Durum: {getStatusText(statusFilter)} ✕
+              </Badge>
+            )}
+            {recordStatusFilter !== 'open' && (
+              <Badge variant="secondary" className="cursor-pointer" onClick={() => setRecordStatusFilter('open')}>
+                Kayıt: {recordStatusFilter === 'closed' ? 'Kapalı' : recordStatusFilter === 'on_hold' ? 'Beklemede' : recordStatusFilter === 'device_repair' ? 'Cihaz Tamiri' : 'Tümü'} ✕
               </Badge>
             )}
             {destinationFilter !== 'all' && (
@@ -401,6 +518,7 @@ export default function CargoPage() {
               onClick={() => {
                 setTypeFilter('all')
                 setStatusFilter('all')
+                setRecordStatusFilter('open')
                 setDestinationFilter('all')
                 setDateFilter('all')
                 setDateRangeStart('')
@@ -489,7 +607,7 @@ export default function CargoPage() {
         <CardHeader>
           <CardTitle>Kargo Listesi</CardTitle>
           <CardDescription>
-            Toplam {filteredCargos.length} kayıt gösteriliyor
+            Toplam {sortedFilteredCargos.length} kayıt gösteriliyor
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -500,18 +618,29 @@ export default function CargoPage() {
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Takip No</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Tip</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kayıt</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Gönderen</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Alıcı</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kargo Şirketi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Hedef</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Gönderim Tarihi</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Depo</th>
                   <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Cihaz Sayısı</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedCargos.map((cargo) => (
-                  <tr key={cargo.id} className="border-b transition-colors hover:bg-muted/50">
+                  <tr
+                    key={cargo.id}
+                    className={`border-b transition-colors hover:bg-muted/50 ${
+                      cargo.recordStatus === 'closed'
+                        ? 'bg-muted/40 text-muted-foreground border-l-4 border-l-muted-foreground/40'
+                        : cargo.recordStatus === 'on_hold'
+                          ? 'bg-amber-50/60 border-l-4 border-l-amber-500/60'
+                          : ''
+                    }`}
+                  >
                     <td className="p-4 align-middle font-medium">
                       {cargo.trackingNumber}
                     </td>
@@ -536,6 +665,12 @@ export default function CargoPage() {
                       </Badge>
                     </td>
                     <td className="p-4 align-middle">
+                      <Badge variant={cargo.recordStatus === 'closed' ? 'secondary' : cargo.recordStatus === 'on_hold' ? 'outline' : cargo.recordStatus === 'device_repair' ? 'destructive' : 'default'} className="gap-1">
+                        {cargo.recordStatus === 'closed' ? <Lock className="h-3 w-3" /> : cargo.recordStatus === 'on_hold' ? <PauseCircle className="h-3 w-3" /> : null}
+                        {getRecordStatusText(cargo.recordStatus)}
+                      </Badge>
+                    </td>
+                    <td className="p-4 align-middle">
                       {truncateText(cargo.sender, 20)}
                     </td>
                     <td className="p-4 align-middle">
@@ -552,6 +687,15 @@ export default function CargoPage() {
                     </td>
                     <td className="p-4 align-middle">
                       {cargo.sentDate ? formatDate(cargo.sentDate) : '-'}
+                    </td>
+                    <td className="p-4 align-middle">
+                      {cargo.type === 'incoming' ? (
+                        <Badge variant="secondary">
+                          {cargo.currentLocationName || 'Merkez Ofis Deposu'}
+                        </Badge>
+                      ) : (
+                        '-'
+                      )}
                     </td>
                     <td className="p-4 align-middle text-center">
                       {cargo.devices.length}
@@ -574,11 +718,47 @@ export default function CargoPage() {
                               setSelectedCargo(cargo)
                               setDispatchOpen(true)
                             }}
+                            disabled={cargo.recordStatus === 'closed'}
                           >
                             <ArrowRightLeft className="h-4 w-4 mr-1" />
                             Sevk Et
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingCargo(cargo)
+                            setEditOpen(true)
+                          }}
+                          disabled={cargo.recordStatus === 'closed'}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Düzenle
+                        </Button>
+                        {cargo.recordStatus === 'device_repair' && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/repairs/cargo/${cargo.id}`)}
+                          >
+                            Tamiri Yönet
+                          </Button>
+                        )}
+                        <Select
+                          value={cargo.recordStatus || 'open'}
+                          onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair') => handleUpdateRecordStatus(cargo.id, value as any)}
+                        >
+                          <SelectTrigger className="h-8 w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="open">Açık</SelectItem>
+                            <SelectItem value="on_hold">Beklemede</SelectItem>
+                            <SelectItem value="device_repair">Cihaz Tamiri</SelectItem>
+                            <SelectItem value="closed">Kapalı</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </td>
                   </tr>
@@ -593,10 +773,10 @@ export default function CargoPage() {
             )}
 
             {/* Sayfalama */}
-            {filteredCargos.length > 0 && (
+            {sortedFilteredCargos.length > 0 && (
               <div className="flex items-center justify-between px-2 py-4">
                 <div className="text-sm text-muted-foreground">
-                  {paginatedCargos.length} kayıt gösteriliyor (toplam {filteredCargos.length})
+                  {paginatedCargos.length} kayıt gösteriliyor (toplam {sortedFilteredCargos.length})
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button
@@ -630,7 +810,22 @@ export default function CargoPage() {
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSubmit={handleAddCargo}
+        mode="create"
       />
+
+      {/* Düzenleme Dialog */}
+      {editingCargo && (
+        <CargoFormDialog
+          open={editOpen}
+          onOpenChange={(open: boolean) => {
+            setEditOpen(open)
+            if (!open) setEditingCargo(null)
+          }}
+          onSubmit={(updated) => handleUpdateCargo(editingCargo.id, updated)}
+          initialData={editingCargo}
+          mode="edit"
+        />
+      )}
 
       {/* Sevk Dialog */}
       {selectedCargo && (

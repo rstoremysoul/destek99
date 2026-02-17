@@ -16,15 +16,24 @@ interface EquivalentDeviceFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (device: Partial<EquivalentDevice>) => void
+  initialData?: EquivalentDevice | null
+  mode?: 'create' | 'edit'
 }
 
-export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: EquivalentDeviceFormDialogProps) {
+export function EquivalentDeviceFormDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  initialData,
+  mode = 'create',
+}: EquivalentDeviceFormDialogProps) {
   const [formData, setFormData] = useState({
     deviceName: 'Muadil RobotPOS Yazıcı - 1',
     brand: '',
     model: '',
     serialNumber: '',
     currentLocation: 'in_warehouse' as const,
+    recordStatus: 'open' as const,
     status: 'available' as const,
     condition: 'good' as const,
     assignedToId: '',
@@ -49,6 +58,30 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
       fetchLocations()
     }
   }, [open])
+
+  useEffect(() => {
+    if (!open) return
+
+    if (initialData) {
+      setFormData({
+        deviceName: initialData.deviceName || '',
+        brand: initialData.brand || '',
+        model: initialData.model || '',
+        serialNumber: initialData.serialNumber || '',
+        currentLocation: (initialData.currentLocation || 'in_warehouse') as any,
+        recordStatus: (initialData.recordStatus || 'open') as any,
+        status: (initialData.status || 'available') as any,
+        condition: (initialData.condition || 'good') as any,
+        assignedToId: initialData.assignedToId || '',
+        assignedDate: initialData.assignedDate ? new Date(initialData.assignedDate).toISOString().split('T')[0] : '',
+        purchaseDate: initialData.purchaseDate ? new Date(initialData.purchaseDate).toISOString().split('T')[0] : '',
+        warrantyEnd: initialData.warrantyEnd ? new Date(initialData.warrantyEnd).toISOString().split('T')[0] : '',
+        notes: initialData.notes || '',
+        images: initialData.images || '',
+      })
+      setSerialError('')
+    }
+  }, [open, initialData])
 
   useEffect(() => {
     if (formData.brand) {
@@ -101,6 +134,11 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
     }
 
     try {
+      if (mode === 'edit' && initialData?.serialNumber === serialNumber) {
+        setSerialError('')
+        return true
+      }
+
       const response = await fetch(`/api/equivalent-devices/check-serial?serial=${encodeURIComponent(serialNumber)}`)
       const data = await response.json()
 
@@ -150,8 +188,10 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
       return
     }
 
-    // Cihaz numarasını otomatik oluştur
-    const deviceNumber = `MC-${Date.now().toString().slice(-6)}`
+    // Cihaz numarasını otomatik oluştur (create) veya mevcut numarayı koru (edit)
+    const deviceNumber = mode === 'edit' && initialData?.deviceNumber
+      ? initialData.deviceNumber
+      : `MC-${Date.now().toString().slice(-6)}`
 
     const newDevice: Partial<EquivalentDevice> = {
       deviceNumber,
@@ -160,6 +200,7 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
       model: formData.model,
       serialNumber: formData.serialNumber,
       currentLocation: formData.currentLocation,
+      recordStatus: formData.recordStatus,
       status: formData.status,
       condition: formData.condition,
       assignedToId: formData.assignedToId || undefined,
@@ -174,23 +215,26 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
 
     onSubmit(newDevice)
 
-    // Formu sıfırla
-    setFormData({
-      deviceName: 'Muadil RobotPOS Yazıcı - 1',
-      brand: '',
-      model: '',
-      serialNumber: '',
-      currentLocation: 'in_warehouse',
-      status: 'available',
-      condition: 'good',
-      assignedToId: '',
-      assignedDate: '',
-      purchaseDate: '',
-      warrantyEnd: '',
-      notes: '',
-      images: '',
-    })
-    setSerialError('')
+    if (mode === 'create') {
+      // Formu sıfırla
+      setFormData({
+        deviceName: 'Muadil RobotPOS Yazıcı - 1',
+        brand: '',
+        model: '',
+        serialNumber: '',
+        currentLocation: 'in_warehouse',
+        recordStatus: 'open',
+        status: 'available',
+        condition: 'good',
+        assignedToId: '',
+        assignedDate: '',
+        purchaseDate: '',
+        warrantyEnd: '',
+        notes: '',
+        images: '',
+      })
+      setSerialError('')
+    }
 
     onOpenChange(false)
   }
@@ -227,10 +271,12 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-              Yeni Muadil Cihaz
+              {mode === 'edit' ? 'Muadil Cihazı Düzenle' : 'Yeni Muadil Cihaz'}
             </DialogTitle>
             <DialogDescription>
-              Yeni bir muadil cihaz kaydı oluşturun. Tüm alanları dikkatlice doldurun.
+              {mode === 'edit'
+                ? 'Mevcut muadil cihaz kaydını güncelleyin.'
+                : 'Yeni bir muadil cihaz kaydı oluşturun. Tüm alanları dikkatlice doldurun.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -254,10 +300,10 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="brand" className="text-sm font-medium">
-                      Marka *
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="brand" className="text-sm font-medium">
+                    Marka *
                     </Label>
                     <div className="relative">
                       <Select
@@ -295,11 +341,11 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
                     <p className="text-xs text-muted-foreground">
                       Listede yoksa yöneticinize bildirin
                     </p>
-                  </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="model" className="text-sm font-medium">
-                      Model *
+                <div className="space-y-2">
+                  <Label htmlFor="model" className="text-sm font-medium">
+                    Model *
                     </Label>
                     <Select
                       value={formData.model}
@@ -338,13 +384,13 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
                     <p className="text-xs text-muted-foreground">
                       Listede yoksa yöneticinize bildirin
                     </p>
-                  </div>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="serialNumber" className="text-sm font-medium">
-                    Seri Numarası *
-                  </Label>
+              <div className="space-y-2">
+                <Label htmlFor="serialNumber" className="text-sm font-medium">
+                  Seri Numarası *
+                </Label>
                   <Input
                     id="serialNumber"
                     value={formData.serialNumber}
@@ -365,12 +411,12 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
                       <span>{serialError}</span>
                     </div>
                   )}
-                </div>
               </div>
+            </div>
 
-              {/* Konum ve Durum */}
-              <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <h3 className="font-semibold text-slate-900">Konum ve Durum</h3>
+            {/* Konum ve Durum */}
+            <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <h3 className="font-semibold text-slate-900">Konum ve Durum</h3>
 
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Muadil Konum *</Label>
@@ -393,6 +439,25 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recordStatus" className="text-sm font-medium">
+                      Kayıt Durumu *
+                    </Label>
+                    <Select
+                      value={formData.recordStatus}
+                      onValueChange={(value: any) => setFormData({ ...formData, recordStatus: value })}
+                    >
+                      <SelectTrigger className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Açık</SelectItem>
+                        <SelectItem value="on_hold">Beklemede</SelectItem>
+                        <SelectItem value="closed">Kapalı</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="status" className="text-sm font-medium">
                       Durum *
@@ -556,13 +621,13 @@ export function EquivalentDeviceFormDialog({ open, onOpenChange, onSubmit }: Equ
               >
                 İptal
               </Button>
-              <Button
-                type="submit"
-                className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white"
-                disabled={!!serialError}
-              >
-                Cihaz Kaydı Oluştur
-              </Button>
+                <Button
+                  type="submit"
+                  className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white"
+                  disabled={!!serialError}
+                >
+                  {mode === 'edit' ? 'Cihaz Kaydını Güncelle' : 'Cihaz Kaydı Oluştur'}
+                </Button>
             </DialogFooter>
           </form>
         </DialogContent>

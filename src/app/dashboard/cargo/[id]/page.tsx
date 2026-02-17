@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CargoTracking } from '@/types'
 import {
   ArrowLeft,
@@ -19,6 +20,7 @@ import {
   Building2,
   ClipboardList
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface PageProps {
   params: { id: string }
@@ -26,6 +28,7 @@ interface PageProps {
 
 export default function CargoDetailPage({ params }: PageProps) {
   const [cargo, setCargo] = useState<CargoTracking | null>(null)
+  const [repairHistory, setRepairHistory] = useState<Array<{ at: string; action: string; technicianName?: string; operations?: string[]; note?: string }>>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -45,6 +48,7 @@ export default function CargoDetailPage({ params }: PageProps) {
           trackingNumber: data.trackingNumber,
           type: data.type.toLowerCase(),
           status: data.status.toLowerCase(),
+          recordStatus: (data.recordStatus ? String(data.recordStatus).toLowerCase() : 'open') as 'open' | 'on_hold' | 'closed' | 'device_repair',
           sender: data.sender,
           receiver: data.receiver,
           cargoCompany: data.cargoCompany,
@@ -58,6 +62,10 @@ export default function CargoDetailPage({ params }: PageProps) {
             deviceName: d.deviceName,
             model: d.model,
             serialNumber: d.serialNumber,
+            deviceSource: d.deviceSource || 'other',
+            equivalentDeviceId: d.equivalentDeviceId || undefined,
+            customerName: d.customerName || undefined,
+            customerCompanyName: d.customerCompanyName || undefined,
             quantity: d.quantity,
             condition: d.condition.toLowerCase(),
             purpose: d.purpose.toLowerCase(),
@@ -66,6 +74,7 @@ export default function CargoDetailPage({ params }: PageProps) {
           updatedAt: new Date(data.updatedAt),
         }
         setCargo(mappedData)
+        setRepairHistory(Array.isArray(data?.repair?.history) ? data.repair.history : [])
       } else if (response.status === 404) {
         router.push('/dashboard/cargo')
       }
@@ -94,6 +103,33 @@ export default function CargoDetailPage({ params }: PageProps) {
         </div>
       </div>
     )
+  }
+
+  const handleRecordStatusChange = async (value: 'open' | 'on_hold' | 'closed' | 'device_repair') => {
+    if (!cargo) return
+
+    try {
+      const response = await fetch(`/api/cargo/${cargo.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recordStatus: value,
+        }),
+      })
+
+      if (response.ok) {
+        await fetchCargo()
+      } else {
+        const error = await response.json().catch(() => null)
+        toast.error(error?.error || 'Kayıt durumu güncellenemedi')
+        console.error('Failed to update cargo record status', error)
+      }
+    } catch (error) {
+      toast.error('Kayıt durumu güncellenirken hata oluştu')
+      console.error('Error updating cargo record status:', error)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -125,6 +161,16 @@ export default function CargoDetailPage({ params }: PageProps) {
       case 'branch': return 'Şube'
       case 'headquarters': return 'Merkez'
       default: return destination
+    }
+  }
+
+  const getRecordStatusText = (status?: string) => {
+    switch (status) {
+      case 'open': return 'Açık'
+      case 'on_hold': return 'Beklemede'
+      case 'closed': return 'Kapalı'
+      case 'device_repair': return 'Cihaz Tamiri'
+      default: return 'Açık'
     }
   }
 
@@ -182,9 +228,34 @@ export default function CargoDetailPage({ params }: PageProps) {
             <Badge variant={getStatusColor(cargo.status)} className="text-sm py-1">
               {getStatusText(cargo.status)}
             </Badge>
+            <Badge
+              variant={cargo.recordStatus === 'closed' ? 'secondary' : cargo.recordStatus === 'on_hold' ? 'outline' : cargo.recordStatus === 'device_repair' ? 'destructive' : 'default'}
+              className="text-sm py-1"
+            >
+              {getRecordStatusText(cargo.recordStatus)}
+            </Badge>
             <Badge variant="outline" className="text-sm py-1">
               {cargo.type === 'incoming' ? 'Gelen' : 'Giden'}
             </Badge>
+            <Select
+              value={cargo.recordStatus || 'open'}
+              onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair') => handleRecordStatusChange(value)}
+            >
+              <SelectTrigger className="h-8 w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Açık</SelectItem>
+                <SelectItem value="on_hold">Beklemede</SelectItem>
+                <SelectItem value="device_repair">Cihaz Tamiri</SelectItem>
+                <SelectItem value="closed">Kapalı</SelectItem>
+              </SelectContent>
+            </Select>
+            {cargo.recordStatus === 'device_repair' && (
+              <Button variant="secondary" size="sm" onClick={() => router.push(`/dashboard/repairs/cargo/${cargo.id}`)}>
+                Tamiri Yönet
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -357,6 +428,21 @@ export default function CargoDetailPage({ params }: PageProps) {
                     {formatDate(cargo.updatedAt)}
                   </div>
                 </div>
+                {repairHistory.map((item, idx) => (
+                  <div key={`${item.at}-${idx}`} className="border rounded p-3">
+                    <div className="text-sm font-medium">{item.action}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(item.at).toLocaleString('tr-TR')}
+                    </div>
+                    {item.technicianName && (
+                      <div className="text-sm">Teknisyen: {item.technicianName}</div>
+                    )}
+                    {item.operations && item.operations.length > 0 && (
+                      <div className="text-sm">İşlemler: {item.operations.join(', ')}</div>
+                    )}
+                    {item.note && <div className="text-sm">Not: {item.note}</div>}
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

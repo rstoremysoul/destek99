@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
@@ -6,6 +6,11 @@ import "ag-grid-community/styles/ag-theme-alpine.css";
 export const metadata: Metadata = {
   title: "Destek Yönetimi",
   description: "Saha destek ekipleri için mobil destek yönetim uygulaması",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -21,4 +26,3 @@ export default function RootLayout({
     </html>
   );
 }
-

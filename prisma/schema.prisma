@@ -167,6 +167,7 @@ model CargoTracking {
   trackingNumber     String            @unique @map("tracking_number")
   type               CargoType
   status             CargoStatus       @default(IN_TRANSIT)
+  recordStatus       CargoRecordStatus @default(OPEN) @map("record_status")
   sender             String
   receiver           String
   cargoCompany       String?           @map("cargo_company") // Kept for legacy/fallback
@@ -340,6 +341,7 @@ model EquivalentDevice {
   model               String
   serialNumber        String                        @unique @map("serial_number")
   currentLocation     EquivalentLocation            @default(IN_WAREHOUSE) @map("current_location")
+  recordStatus        EquivalentRecordStatus        @default(OPEN) @map("record_status")
   // Optional: Link to a specific Location entity if needed for more than just enum
   locationId          String?                       @map("location_id")
   location            Location?                     @relation(fields: [locationId], references: [id])
@@ -442,6 +444,12 @@ enum CargoStatus {
   DAMAGED
 }
 
+enum CargoRecordStatus {
+  OPEN
+  ON_HOLD
+  CLOSED
+}
+
 enum CargoDestination {
   CUSTOMER
   DISTRIBUTOR
@@ -484,6 +492,12 @@ enum EquivalentDeviceStatus {
   RESERVED
   RETIRED
   PASSIVE
+}
+
+enum EquivalentRecordStatus {
+  OPEN
+  ON_HOLD
+  CLOSED
 }
 
 enum EquivalentCondition {

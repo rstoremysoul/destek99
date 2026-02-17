@@ -13,7 +13,12 @@ export async function GET(_request: NextRequest) {
   } catch (error) {
     console.error('Error fetching brands:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch brands' },
+      {
+        error: 'Failed to fetch brands',
+        details: process.env.NODE_ENV === 'production'
+          ? undefined
+          : (error instanceof Error ? error.message : 'Unknown error'),
+      },
       { status: 500 }
     )
   }
@@ -33,9 +38,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if brand exists (case-insensitive)
+    // Check if brand exists (case-insensitive fallback for sqlite)
     const existing = await db.deviceBrand.findFirst({
-      where: { name: { equals: name, mode: 'insensitive' } },
+      where: {
+        OR: [
+          { name: { equals: name } },
+          { name: { equals: name.toLowerCase() } },
+          { name: { equals: name.toUpperCase() } },
+        ],
+      },
     })
     if (existing) {
       return NextResponse.json(existing, { status: 200 })
@@ -49,7 +60,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating brand:', error)
     return NextResponse.json(
-      { error: 'Failed to create brand' },
+      {
+        error: 'Failed to create brand',
+        details: process.env.NODE_ENV === 'production'
+          ? undefined
+          : (error instanceof Error ? error.message : 'Unknown error'),
+      },
       { status: 500 }
     )
   }

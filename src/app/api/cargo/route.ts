@@ -1,20 +1,114 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
-import { CargoType, CargoStatus, CargoDestination, DeviceCondition, CargoPurpose } from '@prisma/client'
+import { CargoType, CargoStatus, CargoDestination, DeviceCondition, CargoPurpose, Prisma } from '@prisma/client'
+import { appendCargoRepairHistory, parseCargoRepairMeta } from '@/lib/cargo-repair'
+
+const DEFAULT_HQ_NAME = 'Merkez Ofis Deposu'
+
+function isUnknownRecordStatusArg(error: unknown) {
+  if (!(error instanceof Error)) return false
+  return error.message.includes('Unknown argument `recordStatus`') || error.message.includes('record_status')
+}
+
+function normalizeRecordStatus(status: string | null | undefined, notes?: string | null) {
+  const raw = typeof status === 'string' ? status.toLowerCase() : 'open'
+  const { meta } = parseCargoRepairMeta(notes)
+  if (meta?.active) return 'device_repair'
+  return raw
+}
+
+async function getHeadquartersLocation() {
+  const hq = await prisma.location.findFirst({
+    where: {
+      OR: [
+        { type: 'HEADQUARTERS' },
+        { name: { contains: 'Merkez' } },
+        { name: { contains: 'Ofis' } },
+      ],
+      active: true,
+    },
+    orderBy: { name: 'asc' },
+  })
+
+  return hq
+}
 
 // GET all cargo trackings
 export async function GET(request: NextRequest) {
   try {
-    const cargos = await prisma.cargoTracking.findMany({
-      include: {
-        devices: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
+    const headquarters = await getHeadquartersLocation()
+    const hqName = headquarters?.name || DEFAULT_HQ_NAME
 
-    return NextResponse.json(cargos)
+    let cargos: any[] = []
+    try {
+      cargos = await (prisma.cargoTracking as any).findMany({
+        include: {
+          devices: true,
+        },
+        orderBy: [
+          { recordStatus: 'asc' },
+          { createdAt: 'desc' },
+        ],
+      })
+    } catch (error) {
+      if (!isUnknownRecordStatusArg(error)) throw error
+
+      cargos = await prisma.cargoTracking.findMany({
+        include: {
+          devices: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
+    }
+
+    const enriched = await Promise.all(cargos.map(async (cargo) => {
+      // Varsayılan ofis ismi
+      let locationName = cargo.type === 'INCOMING' ? hqName : null;
+
+      // Eğer kargo cihaz içeriyorsa, bu cihazların güncel konumuna bakalım
+      if (cargo.devices && cargo.devices.length > 0) {
+          const serials = cargo.devices
+            .map((d: any) => d.serialNumber)
+            .filter((s: string | null | undefined): s is string => Boolean(s));
+
+        if (serials.length > 0) {
+          // Bu seri numaralarına sahip cihazların güncel konumlarını bulalım
+          const devicesInSystem = await prisma.equivalentDevice.findMany({
+            where: { serialNumber: { in: serials } },
+            include: { location: true }
+          });
+
+          // Cihazların bulunduğu benzersiz konumları topla
+          const locations = new Set<string>();
+          devicesInSystem.forEach(d => {
+            if (d.location && d.location.name) {
+              locations.add(d.location.name);
+            } else if (d.currentLocation === 'ON_SITE_SERVICE') {
+              locations.add('Sahada / Müşteride');
+            } else if (d.currentLocation === 'AT_CUSTOMER') {
+              locations.add('Müşteride');
+            }
+          });
+
+          if (locations.size === 1) {
+            locationName = Array.from(locations)[0];
+          } else if (locations.size > 1) {
+            locationName = 'Muhtelif / Dağıtılmış';
+          }
+          // locations.size === 0 ise (henüz envantere girmemiş veya eşleşmemiş), varsayılanı koru
+        }
+      }
+
+      return {
+        ...cargo,
+        recordStatus: normalizeRecordStatus(cargo.recordStatus, cargo.notes),
+        currentLocationName: locationName,
+      };
+    }));
+
+    return NextResponse.json(enriched)
   } catch (error) {
     console.error('Error fetching cargo:', error)
     return NextResponse.json(
@@ -32,6 +126,7 @@ export async function POST(request: NextRequest) {
       trackingNumber,
       type,
       status,
+      recordStatus,
       sender,
       receiver,
       cargoCompany,
@@ -47,7 +142,8 @@ export async function POST(request: NextRequest) {
     const typeMap: { [key: string]: CargoType } = {
       'incoming': CargoType.INCOMING,
       'outgoing': CargoType.OUTGOING,
-      // Add other types if necessary or default
+      'on_site_service': CargoType.ON_SITE_SERVICE,
+      'installation_team': CargoType.INSTALLATION_TEAM,
     }
 
     const statusMap: { [key: string]: CargoStatus } = {
@@ -79,73 +175,159 @@ export async function POST(request: NextRequest) {
       'return': CargoPurpose.RETURN,
     }
 
-    const cargo = await prisma.cargoTracking.create({
-      data: {
-        trackingNumber,
-        type: typeMap[type?.toLowerCase()] || CargoType.OUTGOING,
-        status: statusMap[status?.toLowerCase()] || CargoStatus.IN_TRANSIT,
-        sender,
-        receiver,
-        cargoCompany: cargoCompany || '',
-        sentDate: sentDate ? new Date(sentDate) : null,
-        deliveredDate: deliveredDate ? new Date(deliveredDate) : null,
-        destination: destinationMap[destination?.toLowerCase()] || CargoDestination.CUSTOMER,
-        destinationAddress,
-        notes,
-        devices: {
-          create: devices.map((device: any) => ({
-            deviceName: device.deviceName,
-            model: device.model,
-            serialNumber: device.serialNumber,
-            quantity: device.quantity || 1,
-            condition: conditionMap[device.condition?.toLowerCase()] || DeviceCondition.NEW,
-            purpose: purposeMap[device.purpose?.toLowerCase()] || CargoPurpose.INSTALLATION,
-          })),
-        },
-      },
-      include: {
-        devices: true,
-      },
+    const recordStatusMap: { [key: string]: string } = {
+      'open': 'OPEN',
+      'on_hold': 'ON_HOLD',
+      'closed': 'CLOSED',
+      'device_repair': 'ON_HOLD',
+    }
+
+    const normalizedTrackingNumber = String(trackingNumber || '').trim()
+    if (!normalizedTrackingNumber) {
+      return NextResponse.json(
+        { error: 'Takip numarasi zorunludur.' },
+        { status: 400 }
+      )
+    }
+
+    const existingCargo = await prisma.cargoTracking.findUnique({
+      where: { trackingNumber: normalizedTrackingNumber },
+      select: { id: true },
     })
+
+    if (existingCargo) {
+      return NextResponse.json(
+        { error: 'Bu takip numarasi zaten kayitli. Lutfen farkli bir takip numarasi girin.' },
+        { status: 409 }
+      )
+    }
+
+    const deviceList = Array.isArray(devices) ? devices : []
+
+    const createData: any = {
+      trackingNumber: normalizedTrackingNumber,
+      type: typeMap[type?.toLowerCase()] || CargoType.OUTGOING,
+      status: statusMap[status?.toLowerCase()] || CargoStatus.IN_TRANSIT,
+      sender,
+      receiver,
+      cargoCompany: cargoCompany || '',
+      sentDate: sentDate ? new Date(sentDate) : null,
+      deliveredDate: deliveredDate ? new Date(deliveredDate) : null,
+      destination: destinationMap[destination?.toLowerCase()] || CargoDestination.CUSTOMER,
+      destinationAddress,
+      notes,
+      devices: {
+        create: deviceList.map((device: any) => ({
+          deviceName: device.deviceName,
+          model: device.model,
+          serialNumber: device.serialNumber,
+          quantity: device.quantity || 1,
+          condition: conditionMap[device.condition?.toLowerCase()] || DeviceCondition.NEW,
+          purpose: purposeMap[device.purpose?.toLowerCase()] || CargoPurpose.INSTALLATION,
+        })),
+      },
+    }
+
+    if (typeof recordStatus === 'string') {
+      const mappedStatus = recordStatusMap[recordStatus.toLowerCase()]
+      if (mappedStatus) {
+        createData.recordStatus = mappedStatus
+      }
+    }
+
+    if (String(recordStatus || '').toLowerCase() === 'device_repair') {
+      createData.notes = appendCargoRepairHistory(
+        typeof notes === 'string' ? notes : '',
+        {
+          at: new Date().toISOString(),
+          action: 'Kargo kaydi cihaz tamiri durumunda olusturuldu',
+        },
+        {
+          active: true,
+          status: 'pending',
+        }
+      )
+    }
+
+    let cargo: any
+    try {
+      cargo = await (prisma.cargoTracking as any).create({
+        data: createData,
+        include: {
+          devices: true,
+        },
+      })
+    } catch (error) {
+      if (!isUnknownRecordStatusArg(error)) throw error
+
+      delete createData.recordStatus
+      cargo = await prisma.cargoTracking.create({
+        data: createData,
+        include: {
+          devices: true,
+        },
+      })
+    }
 
     // --- AUTOMATIC WAREHOUSE ASSIGNMENT FOR INCOMING CARGO ---
     if (typeMap[type?.toLowerCase()] === CargoType.INCOMING) {
       try {
-        // 1. Find or Create "Office" Warehouse
-        let office = await prisma.location.findFirst({
-          where: {
-            OR: [
-              { type: 'HEADQUARTERS' },
-              { name: { contains: 'Merkez' } },
-              { name: { contains: 'Ofis' } }
-            ]
-          }
-        })
+        let targetLocation;
 
-        if (!office) {
-          office = await prisma.location.create({
-            data: {
-              name: 'Merkez Ofis',
-              type: 'HEADQUARTERS',
-              address: 'Otomatik Oluşturuldu',
-            }
-          })
+        // 1. Determine Target Location
+        if (body.targetLocationId) {
+          targetLocation = await prisma.location.findUnique({
+            where: { id: body.targetLocationId }
+          });
         }
 
-        // 2. Process each device to update/create Inventory
-        for (const device of devices) {
+        // Fallback to "Office" if no target selected or not found
+        if (!targetLocation) {
+          targetLocation = await getHeadquartersLocation();
+          if (!targetLocation) {
+            targetLocation = await prisma.location.create({
+              data: {
+                name: DEFAULT_HQ_NAME,
+                type: 'HEADQUARTERS',
+                address: 'Otomatik Oluşturuldu',
+                active: true,
+              }
+            })
+          }
+        }
+
+        // 2. Process only predefined equivalent devices
+        let movedEquivalentCount = 0
+        let skippedNonEquivalentCount = 0
+
+        for (const device of deviceList) {
+          const sourceType = String(device?.sourceType || '').toLowerCase()
+          if (sourceType !== 'equivalent') {
+            skippedNonEquivalentCount++
+            continue
+          }
+
           if (!device.serialNumber || device.serialNumber.length < 3) continue;
 
-          const existingDevice = await prisma.equivalentDevice.findUnique({
-            where: { serialNumber: device.serialNumber }
-          })
+          let existingDevice = null
+          if (device.equivalentDeviceId) {
+            existingDevice = await prisma.equivalentDevice.findUnique({
+              where: { id: device.equivalentDeviceId }
+            })
+          }
+
+          if (!existingDevice) {
+            existingDevice = await prisma.equivalentDevice.findUnique({
+              where: { serialNumber: device.serialNumber }
+            })
+          }
 
           if (existingDevice) {
             // Update existing device location
             await prisma.equivalentDevice.update({
               where: { id: existingDevice.id },
               data: {
-                location: { connect: { id: office.id } },
+                location: { connect: { id: targetLocation.id } },
                 currentLocation: 'IN_WAREHOUSE',
                 status: 'AVAILABLE',
               }
@@ -157,42 +339,25 @@ export async function POST(request: NextRequest) {
                 device: { connect: { id: existingDevice.id } },
                 previousLocation: existingDevice.currentLocation,
                 newLocation: 'IN_WAREHOUSE',
+                previousLocationId: existingDevice.locationId,
+                newLocationId: targetLocation.id,
                 assignedToName: `Kargo ile Giriş (${trackingNumber})`,
-                notes: `Gelen Kargo: ${trackingNumber} - Gönderen: ${sender}`,
+                notes: `Gelen Kargo: ${trackingNumber} - Gönderen: ${sender} - Depo: ${targetLocation.name}`,
                 changedBy: 'SYSTEM',
                 changedByName: 'Sistem (Otomatik Kargo Girişi)',
               }
             })
 
+            movedEquivalentCount++
           } else {
-            // Create new inventory item
-            const newDev = await prisma.equivalentDevice.create({
-              data: {
-                deviceNumber: `DEV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`,
-                deviceName: device.deviceName,
-                brand: 'Bilinmiyor',
-                model: device.model,
-                serialNumber: device.serialNumber,
-                location: { connect: { id: office.id } },
-                currentLocation: 'IN_WAREHOUSE',
-                status: 'AVAILABLE',
-                condition: 'GOOD',
-              }
-            })
-
-            // Track History
-            await prisma.equivalentDeviceHistory.create({
-              data: {
-                device: { connect: { id: newDev.id } },
-                previousLocation: 'IN_WAREHOUSE',
-                newLocation: 'IN_WAREHOUSE',
-                assignedToName: `Kargo ile Giriş (${trackingNumber})`,
-                notes: `Yeni Kayıt - Gelen Kargo: ${trackingNumber}`,
-                changedBy: 'SYSTEM',
-                changedByName: 'Sistem (Otomatik Kargo Girişi)',
-              }
-            })
+            skippedNonEquivalentCount++
           }
+        }
+
+        if (movedEquivalentCount > 0 || skippedNonEquivalentCount > 0) {
+          console.log(
+            `[cargo-incoming] tracking=${trackingNumber} movedEquivalent=${movedEquivalentCount} skipped=${skippedNonEquivalentCount}`
+          )
         }
       } catch (err) {
         console.error('Error auto-assigning incoming cargo to warehouse:', err)
@@ -203,6 +368,27 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(cargo, { status: 201 })
   } catch (error) {
+    const p2002Target = (error instanceof Prisma.PrismaClientKnownRequestError
+      ? (error as any).meta?.target
+      : null)
+    const targetText = Array.isArray(p2002Target)
+      ? p2002Target.join(',')
+      : String(p2002Target || '')
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002' &&
+      (
+        targetText.includes('tracking_number') ||
+        targetText.includes('trackingNumber')
+      )
+    ) {
+      return NextResponse.json(
+        { error: 'Bu takip numarasi zaten kayitli. Lutfen farkli bir takip numarasi girin.' },
+        { status: 409 }
+      )
+    }
+
     console.error('Error creating cargo:', error)
     return NextResponse.json(
       { error: 'Failed to create cargo' },
@@ -210,4 +396,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
 
