@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -58,7 +58,7 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
   const [spareParts, setSpareParts] = useState<SparePartFormItem[]>([])
   const [laborCost, setLaborCost] = useState<number>(0)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(`/api/cargo-repairs/${params.id}`)
@@ -81,11 +81,11 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, router])
 
   useEffect(() => {
     load()
-  }, [params.id])
+  }, [load])
 
   const toggleOperation = (op: string) => {
     setOperations((prev) => (prev.includes(op) ? prev.filter((x) => x !== op) : [...prev, op]))

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,11 +18,7 @@ export default function RepairDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  useEffect(() => {
-    fetchRepair()
-  }, [params.id])
-
-  const fetchRepair = async () => {
+  const fetchRepair = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/repairs/${params.id}`)
@@ -65,7 +61,11 @@ export default function RepairDetailPage({ params }: PageProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, router])
+
+  useEffect(() => {
+    fetchRepair()
+  }, [fetchRepair])
 
   const getStatusColor = (status: string) => {
     switch (status) {

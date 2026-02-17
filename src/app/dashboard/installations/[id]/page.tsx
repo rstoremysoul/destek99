@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,11 +19,7 @@ export default function InstallationDetailPage({ params }: PageProps) {
   const [isEditing, setIsEditing] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    fetchInstallation()
-  }, [params.id])
-
-  const fetchInstallation = async () => {
+  const fetchInstallation = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/installations/${params.id}`)
@@ -70,7 +66,11 @@ export default function InstallationDetailPage({ params }: PageProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, router])
+
+  useEffect(() => {
+    fetchInstallation()
+  }, [fetchInstallation])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -340,7 +340,7 @@ export default function InstallationDetailPage({ params }: PageProps) {
                       <div>
                         <h3 className="font-semibold">{device.deviceName}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {device.model} " S/N: {device.serialNumber}
+                          {device.model} &quot; S/N: {device.serialNumber}
                         </p>
                       </div>
                       <Badge variant={getDeviceStatusColor(device.installationStatus)}>

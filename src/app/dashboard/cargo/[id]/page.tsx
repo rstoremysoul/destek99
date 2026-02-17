@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -32,11 +32,7 @@ export default function CargoDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  useEffect(() => {
-    fetchCargo()
-  }, [params.id])
-
-  const fetchCargo = async () => {
+  const fetchCargo = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/cargo/${params.id}`)
@@ -83,7 +79,11 @@ export default function CargoDetailPage({ params }: PageProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, router])
+
+  useEffect(() => {
+    fetchCargo()
+  }, [fetchCargo])
 
   if (loading) {
     return (
