@@ -1,5 +1,11 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
+import {
+  EquivalentCondition,
+  EquivalentDeviceStatus,
+  EquivalentLocation,
+  EquivalentRecordStatus,
+} from '@prisma/client'
 
 // GET all equivalent devices
 export async function GET(request: NextRequest) {
@@ -71,33 +77,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Map enum values
-    const locationMap: { [key: string]: string } = {
-      'in_warehouse': 'IN_WAREHOUSE',
-      'on_site_service': 'ON_SITE_SERVICE',
-      'at_customer': 'AT_CUSTOMER',
+    const locationMap: Record<string, EquivalentLocation> = {
+      'in_warehouse': EquivalentLocation.IN_WAREHOUSE,
+      'on_site_service': EquivalentLocation.ON_SITE_SERVICE,
+      'at_customer': EquivalentLocation.AT_CUSTOMER,
     }
 
-    const statusMap: { [key: string]: string } = {
-      'available': 'AVAILABLE',
-      'in_use': 'IN_USE',
-      'in_maintenance': 'IN_MAINTENANCE',
-      'reserved': 'RESERVED',
-      'retired': 'RETIRED',
-      'passive': 'PASSIVE',
+    const statusMap: Record<string, EquivalentDeviceStatus> = {
+      'available': EquivalentDeviceStatus.AVAILABLE,
+      'in_use': EquivalentDeviceStatus.IN_USE,
+      'in_maintenance': EquivalentDeviceStatus.IN_MAINTENANCE,
+      'reserved': EquivalentDeviceStatus.RESERVED,
+      'retired': EquivalentDeviceStatus.RETIRED,
+      'passive': EquivalentDeviceStatus.PASSIVE,
     }
 
-    const conditionMap: { [key: string]: string } = {
-      'new': 'NEW',
-      'excellent': 'EXCELLENT',
-      'good': 'GOOD',
-      'fair': 'FAIR',
-      'poor': 'POOR',
+    const conditionMap: Record<string, EquivalentCondition> = {
+      'new': EquivalentCondition.NEW,
+      'excellent': EquivalentCondition.EXCELLENT,
+      'good': EquivalentCondition.GOOD,
+      'fair': EquivalentCondition.FAIR,
+      'poor': EquivalentCondition.POOR,
     }
 
-    const recordStatusMap: { [key: string]: string } = {
-      'open': 'OPEN',
-      'on_hold': 'ON_HOLD',
-      'closed': 'CLOSED',
+    const recordStatusMap: Record<string, EquivalentRecordStatus> = {
+      'open': EquivalentRecordStatus.OPEN,
+      'on_hold': EquivalentRecordStatus.ON_HOLD,
+      'closed': EquivalentRecordStatus.CLOSED,
     }
 
     const device = await prisma.equivalentDevice.create({
@@ -107,14 +113,14 @@ export async function POST(request: NextRequest) {
         brand,
         model,
         serialNumber,
-        currentLocation: locationMap[currentLocation?.toLowerCase()] || 'IN_WAREHOUSE',
-        recordStatus: recordStatus ? (recordStatusMap[recordStatus?.toLowerCase()] || 'OPEN') : 'OPEN',
-        status: statusMap[status?.toLowerCase()] || 'AVAILABLE',
+        currentLocation: locationMap[currentLocation?.toLowerCase()] || EquivalentLocation.IN_WAREHOUSE,
+        recordStatus: recordStatus ? (recordStatusMap[recordStatus?.toLowerCase()] || EquivalentRecordStatus.OPEN) : EquivalentRecordStatus.OPEN,
+        status: statusMap[status?.toLowerCase()] || EquivalentDeviceStatus.AVAILABLE,
         assignedToId: assignedToId || null,
         assignedDate: assignedDate ? new Date(assignedDate) : null,
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         warrantyEnd: warrantyEnd ? new Date(warrantyEnd) : null,
-        condition: conditionMap[condition?.toLowerCase()] || 'GOOD',
+        condition: conditionMap[condition?.toLowerCase()] || EquivalentCondition.GOOD,
         notes,
         images,
         createdBy,
@@ -129,9 +135,9 @@ export async function POST(request: NextRequest) {
     await prisma.equivalentDeviceHistory.create({
       data: {
         deviceId: device.id,
-        previousLocation: locationMap[currentLocation?.toLowerCase()] || 'IN_WAREHOUSE',
-        newLocation: locationMap[currentLocation?.toLowerCase()] || 'IN_WAREHOUSE',
-        newStatus: statusMap[status?.toLowerCase()] || 'AVAILABLE',
+        previousLocation: locationMap[currentLocation?.toLowerCase()] || EquivalentLocation.IN_WAREHOUSE,
+        newLocation: locationMap[currentLocation?.toLowerCase()] || EquivalentLocation.IN_WAREHOUSE,
+        newStatus: statusMap[status?.toLowerCase()] || EquivalentDeviceStatus.AVAILABLE,
         assignedToId: assignedToId || null,
         notes: 'Cihaz ilk kez oluşturuldu',
         changedBy: createdBy || 'system',

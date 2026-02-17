@@ -15,8 +15,23 @@ interface RepairFormDialogProps {
   onSubmit: (repair: Partial<DeviceRepair>) => void
 }
 
+type RepairFormDraft = {
+  deviceName: string
+  model: string
+  serialNumber: string
+  brand: string
+  companyName: string
+  customerName: string
+  problemDescription: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  isWarranty: boolean
+  warrantyEndDate: string
+  estimatedCompletionDate: string
+  repairCost: string
+}
+
 export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDialogProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RepairFormDraft>({
     deviceName: '',
     model: '',
     serialNumber: '',
@@ -24,7 +39,7 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
     companyName: '',
     customerName: '',
     problemDescription: '',
-    priority: 'medium' as const,
+    priority: 'medium',
     isWarranty: false,
     warrantyEndDate: '',
     estimatedCompletionDate: '',
@@ -60,8 +75,8 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
       priority: formData.priority,
       isWarranty: formData.isWarranty,
       status: 'received',
-      receivedDate: new Date().toISOString(),
-      estimatedCompletion: formData.estimatedCompletionDate || undefined,
+      receivedDate: new Date(),
+      estimatedCompletionDate: formData.estimatedCompletionDate ? new Date(formData.estimatedCompletionDate) : undefined,
       repairCost: formData.repairCost ? parseFloat(formData.repairCost) : undefined,
       brand: formData.brand || undefined,
     }

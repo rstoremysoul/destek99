@@ -1,5 +1,11 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
+import {
+  EquivalentCondition,
+  EquivalentDeviceStatus,
+  EquivalentLocation,
+  EquivalentRecordStatus,
+} from '@prisma/client'
 
 // GET single equivalent device
 export async function GET(
@@ -64,33 +70,33 @@ export async function PATCH(
     } = body
 
     // Map enum values
-    const statusMap: { [key: string]: string } = {
-      'available': 'AVAILABLE',
-      'in_use': 'IN_USE',
-      'in_maintenance': 'IN_MAINTENANCE',
-      'reserved': 'RESERVED',
-      'retired': 'RETIRED',
-      'passive': 'PASSIVE',
+    const statusMap: Record<string, EquivalentDeviceStatus> = {
+      'available': EquivalentDeviceStatus.AVAILABLE,
+      'in_use': EquivalentDeviceStatus.IN_USE,
+      'in_maintenance': EquivalentDeviceStatus.IN_MAINTENANCE,
+      'reserved': EquivalentDeviceStatus.RESERVED,
+      'retired': EquivalentDeviceStatus.RETIRED,
+      'passive': EquivalentDeviceStatus.PASSIVE,
     }
 
-    const conditionMap: { [key: string]: string } = {
-      'new': 'NEW',
-      'excellent': 'EXCELLENT',
-      'good': 'GOOD',
-      'fair': 'FAIR',
-      'poor': 'POOR',
+    const conditionMap: Record<string, EquivalentCondition> = {
+      'new': EquivalentCondition.NEW,
+      'excellent': EquivalentCondition.EXCELLENT,
+      'good': EquivalentCondition.GOOD,
+      'fair': EquivalentCondition.FAIR,
+      'poor': EquivalentCondition.POOR,
     }
 
-    const locationMap: { [key: string]: string } = {
-      'in_warehouse': 'IN_WAREHOUSE',
-      'on_site_service': 'ON_SITE_SERVICE',
-      'at_customer': 'AT_CUSTOMER',
+    const locationMap: Record<string, EquivalentLocation> = {
+      'in_warehouse': EquivalentLocation.IN_WAREHOUSE,
+      'on_site_service': EquivalentLocation.ON_SITE_SERVICE,
+      'at_customer': EquivalentLocation.AT_CUSTOMER,
     }
 
-    const recordStatusMap: { [key: string]: string } = {
-      'open': 'OPEN',
-      'on_hold': 'ON_HOLD',
-      'closed': 'CLOSED',
+    const recordStatusMap: Record<string, EquivalentRecordStatus> = {
+      'open': EquivalentRecordStatus.OPEN,
+      'on_hold': EquivalentRecordStatus.ON_HOLD,
+      'closed': EquivalentRecordStatus.CLOSED,
     }
 
     const device = await prisma.equivalentDevice.update({

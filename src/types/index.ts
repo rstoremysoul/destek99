@@ -97,6 +97,7 @@ export interface InstallationForm {
   contactPerson: string
   contactPhone: string
   notes: string
+  assignedTechnician?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -111,6 +112,7 @@ export interface InstallationDevice {
   installationStatus: 'pending' | 'configured' | 'installed' | 'tested' | 'completed'
   configurationNotes?: string
   testResults?: string
+  notes?: string
 }
 
 export interface CargoTracking {
@@ -194,13 +196,17 @@ export interface DeviceRepair {
   companyName: string
   customerId: string
   customerName: string
+  customerPhone?: string
   technicianId?: string
   technicianName?: string
+  assignedTechnician?: string
+  brand?: string
   receivedDate: Date
   problemDescription: string
   status: 'received' | 'diagnosing' | 'waiting_parts' | 'repairing' | 'testing' | 'completed' | 'unrepairable'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   estimatedCompletionDate?: Date
+  estimatedCompletion?: Date | string
   actualCompletionDate?: Date
   repairCost?: number
   isWarranty: boolean

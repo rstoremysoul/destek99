@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
+import { Priority, RepairStatus } from '@prisma/client'
 
 // GET all repairs
 export async function GET(request: NextRequest) {
@@ -87,21 +88,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Map enum values
-    const statusMap: { [key: string]: string } = {
-      'received': 'RECEIVED',
-      'diagnosing': 'DIAGNOSING',
-      'waiting_parts': 'WAITING_PARTS',
-      'repairing': 'REPAIRING',
-      'testing': 'TESTING',
-      'completed': 'COMPLETED',
-      'unrepairable': 'UNREPAIRABLE',
+    const statusMap: Record<string, RepairStatus> = {
+      'received': RepairStatus.RECEIVED,
+      'diagnosing': RepairStatus.DIAGNOSING,
+      'waiting_parts': RepairStatus.WAITING_PARTS,
+      'repairing': RepairStatus.REPAIRING,
+      'testing': RepairStatus.TESTING,
+      'completed': RepairStatus.COMPLETED,
+      'unrepairable': RepairStatus.UNREPAIRABLE,
     }
 
-    const priorityMap: { [key: string]: string } = {
-      'low': 'LOW',
-      'medium': 'MEDIUM',
-      'high': 'HIGH',
-      'urgent': 'URGENT',
+    const priorityMap: Record<string, Priority> = {
+      'low': Priority.LOW,
+      'medium': Priority.MEDIUM,
+      'high': Priority.HIGH,
+      'urgent': Priority.URGENT,
     }
 
     const repair = await prisma.deviceRepair.create({
@@ -116,15 +117,14 @@ export async function POST(request: NextRequest) {
         receivedDate: new Date(receivedDate),
         completedDate: completedDate ? new Date(completedDate) : null,
         estimatedCompletion: estimatedCompletion ? new Date(estimatedCompletion) : null,
-        status: statusMap[status.toLowerCase()] || 'RECEIVED',
-        priority: priorityMap[priority.toLowerCase()] || 'MEDIUM',
+        status: statusMap[status.toLowerCase()] || RepairStatus.RECEIVED,
+        priority: priorityMap[priority.toLowerCase()] || Priority.MEDIUM,
         problemDescription,
         diagnosisNotes,
         repairNotes,
         isWarranty: isWarranty || false,
         warrantyInfo,
-        assignedTechnician,
-        technicianName,
+        technicianId: assignedTechnician || null,
         laborCost,
         partsCost,
         totalCost,

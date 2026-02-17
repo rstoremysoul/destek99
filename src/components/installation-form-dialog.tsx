@@ -15,16 +15,28 @@ interface InstallationFormDialogProps {
   onSubmit: (form: Partial<InstallationForm>) => void
 }
 
+type InstallationFormDraft = {
+  companyName: string
+  customerName: string
+  contactPerson: string
+  contactPhone: string
+  installationAddress: string
+  plannedInstallDate: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  technicianId: string
+  notes: string
+}
+
 export function InstallationFormDialog({ open, onOpenChange, onSubmit }: InstallationFormDialogProps) {
   const [technicians, setTechnicians] = useState<Technician[]>([])
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<InstallationFormDraft>({
     companyName: '',
     customerName: '',
     contactPerson: '',
     contactPhone: '',
     installationAddress: '',
     plannedInstallDate: '',
-    priority: 'medium' as const,
+    priority: 'medium',
     technicianId: '',
     notes: '',
   })
@@ -52,8 +64,8 @@ export function InstallationFormDialog({ open, onOpenChange, onSubmit }: Install
       contactPerson: formData.contactPerson,
       contactPhone: formData.contactPhone,
       installationAddress: formData.installationAddress,
-      plannedInstallDate: formData.plannedInstallDate, // Send as string, API will parse
-      requestDate: new Date().toISOString(), // Send as ISO string
+      plannedInstallDate: new Date(formData.plannedInstallDate),
+      requestDate: new Date(),
       priority: formData.priority,
       technicianId: formData.technicianId || undefined,
       notes: formData.notes,

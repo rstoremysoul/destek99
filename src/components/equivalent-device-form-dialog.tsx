@@ -20,6 +20,23 @@ interface EquivalentDeviceFormDialogProps {
   mode?: 'create' | 'edit'
 }
 
+type EquivalentDeviceFormData = {
+  deviceName: string
+  brand: string
+  model: string
+  serialNumber: string
+  currentLocation: 'in_warehouse' | 'on_site_service' | 'at_customer'
+  recordStatus: 'open' | 'on_hold' | 'closed'
+  status: 'available' | 'in_use' | 'in_maintenance' | 'reserved' | 'retired' | 'passive'
+  condition: 'new' | 'excellent' | 'good' | 'fair' | 'poor'
+  assignedToId: string
+  assignedDate: string
+  purchaseDate: string
+  warrantyEnd: string
+  notes: string
+  images: string
+}
+
 export function EquivalentDeviceFormDialog({
   open,
   onOpenChange,
@@ -27,15 +44,15 @@ export function EquivalentDeviceFormDialog({
   initialData,
   mode = 'create',
 }: EquivalentDeviceFormDialogProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<EquivalentDeviceFormData>({
     deviceName: 'Muadil RobotPOS Yazıcı - 1',
     brand: '',
     model: '',
     serialNumber: '',
-    currentLocation: 'in_warehouse' as const,
-    recordStatus: 'open' as const,
-    status: 'available' as const,
-    condition: 'good' as const,
+    currentLocation: 'in_warehouse',
+    recordStatus: 'open',
+    status: 'available',
+    condition: 'good',
     assignedToId: '',
     assignedDate: '',
     purchaseDate: '',

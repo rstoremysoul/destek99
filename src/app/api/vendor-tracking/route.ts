@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '../../../lib/db'
+import { VendorProductStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,12 +15,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (status && status !== 'all') {
-      const statusMap: { [key: string]: string } = {
-        'at_vendor': 'AT_VENDOR',
-        'in_testing': 'IN_TESTING',
-        'in_transit': 'IN_TRANSIT',
-        'completed': 'COMPLETED',
-        'returned': 'RETURNED',
+      const statusMap: Record<string, VendorProductStatus> = {
+        'at_vendor': VendorProductStatus.AT_VENDOR,
+        'in_testing': VendorProductStatus.IN_TESTING,
+        'in_transit': VendorProductStatus.IN_TRANSIT,
+        'completed': VendorProductStatus.COMPLETED,
+        'returned': VendorProductStatus.RETURNED,
       }
       whereClause.currentStatus = statusMap[status.toLowerCase()] || status.toUpperCase()
     }
@@ -48,12 +49,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const statusMap: { [key: string]: string } = {
-      'at_vendor': 'AT_VENDOR',
-      'in_testing': 'IN_TESTING',
-      'in_transit': 'IN_TRANSIT',
-      'completed': 'COMPLETED',
-      'returned': 'RETURNED',
+    const statusMap: Record<string, VendorProductStatus> = {
+      'at_vendor': VendorProductStatus.AT_VENDOR,
+      'in_testing': VendorProductStatus.IN_TESTING,
+      'in_transit': VendorProductStatus.IN_TRANSIT,
+      'completed': VendorProductStatus.COMPLETED,
+      'returned': VendorProductStatus.RETURNED,
     }
 
     const product = await db.vendorProduct.create({
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
         serialNumber: body.serialNumber || '',
         brand: body.brand,
         problemDescription: body.problemDescription || '',
-        currentStatus: statusMap[body.status?.toLowerCase()] || 'AT_VENDOR',
+        currentStatus: statusMap[body.status?.toLowerCase()] || VendorProductStatus.AT_VENDOR,
         sentDate: body.sentDate ? new Date(body.sentDate) : null,
         receivedDate: body.receivedDate ? new Date(body.receivedDate) : null,
         estimatedReturn: body.estimatedReturn ? new Date(body.estimatedReturn) : null,
@@ -98,12 +99,12 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const statusMap: { [key: string]: string } = {
-      'at_vendor': 'AT_VENDOR',
-      'in_testing': 'IN_TESTING',
-      'in_transit': 'IN_TRANSIT',
-      'completed': 'COMPLETED',
-      'returned': 'RETURNED',
+    const statusMap: Record<string, VendorProductStatus> = {
+      'at_vendor': VendorProductStatus.AT_VENDOR,
+      'in_testing': VendorProductStatus.IN_TESTING,
+      'in_transit': VendorProductStatus.IN_TRANSIT,
+      'completed': VendorProductStatus.COMPLETED,
+      'returned': VendorProductStatus.RETURNED,
     }
 
     const product = await db.vendorProduct.update({

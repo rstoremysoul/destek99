@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
+import { InstallationStatus, Priority } from '@prisma/client'
 
 // GET all installations
 export async function GET(request: NextRequest) {
@@ -92,20 +93,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Map status and priority to enum values
-    const statusMap: { [key: string]: string } = {
-      'received': 'RECEIVED',
-      'preparing': 'PREPARING',
-      'ready': 'READY',
-      'installing': 'INSTALLING',
-      'completed': 'COMPLETED',
-      'cancelled': 'CANCELLED',
+    const statusMap: Record<string, InstallationStatus> = {
+      'received': InstallationStatus.RECEIVED,
+      'preparing': InstallationStatus.PREPARING,
+      'ready': InstallationStatus.READY,
+      'installing': InstallationStatus.INSTALLING,
+      'completed': InstallationStatus.COMPLETED,
+      'cancelled': InstallationStatus.CANCELLED,
     }
 
-    const priorityMap: { [key: string]: string } = {
-      'low': 'LOW',
-      'medium': 'MEDIUM',
-      'high': 'HIGH',
-      'urgent': 'URGENT',
+    const priorityMap: Record<string, Priority> = {
+      'low': Priority.LOW,
+      'medium': Priority.MEDIUM,
+      'high': Priority.HIGH,
+      'urgent': Priority.URGENT,
     }
 
     // Create installation form with devices
@@ -118,8 +119,8 @@ export async function POST(request: NextRequest) {
         requestDate: new Date(requestDate),
         plannedInstallDate: new Date(plannedInstallDate),
         actualInstallDate: actualInstallDate ? new Date(actualInstallDate) : null,
-        status: statusMap[status.toLowerCase()] || 'RECEIVED',
-        priority: priorityMap[priority.toLowerCase()] || 'MEDIUM',
+        status: statusMap[status.toLowerCase()] || InstallationStatus.RECEIVED,
+        priority: priorityMap[priority.toLowerCase()] || Priority.MEDIUM,
         installationAddress,
         contactPerson,
         contactPhone,
