@@ -1,12 +1,12 @@
 {
-  "/api/cargo/route": "app/api/cargo/route.js",
-  "/api/auth/me/route": "app/api/auth/me/route.js",
-  "/api/auth/login/route": "app/api/auth/login/route.js",
   "/login/page": "app/login/page.js",
-  "/api/repairs/route": "app/api/repairs/route.js",
-  "/api/cargo-repairs/route": "app/api/cargo-repairs/route.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/cargo/page": "app/dashboard/cargo/page.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/cargo/route": "app/api/cargo/route.js",
+  "/api/cargo-companies/route": "app/api/cargo-companies/route.js",
+  "/api/warehouses/route": "app/api/warehouses/route.js",
+  "/api/equivalent-devices/route": "app/api/equivalent-devices/route.js",
   "/dashboard/repairs/cargo/[id]/page": "app/dashboard/repairs/cargo/[id]/page.js",
-  "/dashboard/repairs/page": "app/dashboard/repairs/page.js"
+  "/dashboard/cargo/page": "app/dashboard/cargo/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/equivalent-devices/page": "app/dashboard/equivalent-devices/page.js"
 }
