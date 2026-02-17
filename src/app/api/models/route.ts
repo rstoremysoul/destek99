@@ -1,6 +1,7 @@
-ï»¿import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from 'next/server'
 
-// Marka-model eÅŸleÅŸtirmesi
+// Marka-model eþleþtirmesi
 const BRAND_MODELS: { [key: string]: string[] } = {
   'ROBOTPOS': ['M', 'MK', 'VINTEC', 'EC-LINE', 'EL-LINE', 'RP-81'],
   'HUGIN': ['POS-80', 'POS-58', 'THERMAL-80'],
@@ -44,4 +45,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
 

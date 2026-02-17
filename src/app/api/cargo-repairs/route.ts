@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parseCargoRepairMeta } from '@/lib/cargo-repair'
@@ -51,3 +52,4 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to fetch cargo repairs' }, { status: 500 })
   }
 }
+

@@ -1,4 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
 
 // GET check if serial number exists
@@ -36,4 +37,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
 

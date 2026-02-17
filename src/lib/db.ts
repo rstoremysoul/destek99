@@ -11,8 +11,3 @@ export const db = globalForPrisma.prisma ?? new PrismaClient({
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = db
 }
-
-// Bağlantıyı test et
-db.$connect()
-  .then(() => console.log('✓ DB connected successfully'))
-  .catch((e) => console.error('✗ DB connection failed:', e))

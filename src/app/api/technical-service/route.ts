@@ -1,4 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '../../../lib/db'
 
 export async function GET() {
@@ -128,3 +129,4 @@ export async function DELETE(request: NextRequest) {
     )
   }
 }
+

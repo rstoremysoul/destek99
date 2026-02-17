@@ -1,4 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '../../../lib/db'
 import { VendorProductStatus } from '@prisma/client'
 
@@ -163,3 +164,4 @@ export async function DELETE(request: NextRequest) {
     )
   }
 }
+

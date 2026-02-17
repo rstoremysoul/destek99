@@ -1,4 +1,5 @@
-ï»¿import { NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
+import { NextResponse } from 'next/server'
 import { db } from '../../../../lib/db'
 
 export async function GET() {
@@ -12,24 +13,24 @@ export async function GET() {
     // Convert data to CSV format
     const headers = [
       'ID',
-      'Ä°ÅŸlem Yapan Personel',
+      'Ýþlem Yapan Personel',
       'Fatura Tarihi',
       'Marka',
-      'Ä°ÅŸletme AdÄ±',
-      'CihazÄ±n AdÄ±',
+      'Ýþletme Adý',
+      'Cihazýn Adý',
       'Model',
       'Cihaz Seri No',
-      'Teknik Servise GiriÅŸ Tarihi',
-      'Teknik Servisten Ã‡Ä±kÄ±ÅŸ Tarihi',
+      'Teknik Servise Giriþ Tarihi',
+      'Teknik Servisten Çýkýþ Tarihi',
       'Cihaz Sorunu',
-      'Cihaz Sorun AÃ§Ä±klamalarÄ±',
-      'YapÄ±lan Ä°ÅŸlem',
-      'Teknik Servis MasrafÄ±',
-      'Bizim MÃ¼ÅŸteriye SÃ¶ylediÄŸimiz Masraf',
-      'Onaylayan KiÅŸi',
-      'Connect YazÄ±ldÄ± mÄ±',
-      'OluÅŸturulma Tarihi',
-      'GÃ¼ncellenme Tarihi'
+      'Cihaz Sorun Açýklamalarý',
+      'Yapýlan Ýþlem',
+      'Teknik Servis Masrafý',
+      'Bizim Müþteriye Söylediðimiz Masraf',
+      'Onaylayan Kiþi',
+      'Connect Yazýldý mý',
+      'Oluþturulma Tarihi',
+      'Güncellenme Tarihi'
     ]
 
     const csvRows = [
@@ -83,3 +84,4 @@ export async function GET() {
     )
   }
 }
+
