@@ -523,7 +523,7 @@ export default function RepairsPage() {
         <CardHeader>
           <CardTitle>Kargodan Gelen Cihaz Tamiri Ticketları</CardTitle>
           <CardDescription>
-            Kargo takipte durumu "Cihaz Tamiri" olan kayıtlar burada görünür.
+            Kargo takipte durumu &quot;Cihaz Tamiri&quot; olan kayıtlar burada görünür.
           </CardDescription>
         </CardHeader>
         <CardContent>

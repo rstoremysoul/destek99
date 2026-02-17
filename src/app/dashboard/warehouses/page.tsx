@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,7 +84,7 @@ export default function WarehousesPage() {
     const [activeTab, setActiveTab] = useState('inventory');
 
     // Fetch warehouses for filter dropdown
-    const fetchWarehouses = async () => {
+    const fetchWarehouses = useCallback(async () => {
         try {
             const res = await fetch('/api/warehouses');
             if (res.ok) {
@@ -96,10 +96,10 @@ export default function WarehousesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Fetch movements based on filters
-    const fetchMovements = async () => {
+    const fetchMovements = useCallback(async () => {
         try {
             setMovementsLoading(true);
             let url = '/api/warehouses/movements?limit=200';
@@ -121,9 +121,9 @@ export default function WarehousesPage() {
         } finally {
             setMovementsLoading(false);
         }
-    };
+    }, [selectedWarehouse, movementType]);
 
-    const fetchInventory = async () => {
+    const fetchInventory = useCallback(async () => {
         try {
             setInventoryLoading(true);
             let url = '/api/warehouses/inventory';
@@ -140,25 +140,19 @@ export default function WarehousesPage() {
         } finally {
             setInventoryLoading(false);
         }
-    };
+    }, [inventoryWarehouse]);
 
     useEffect(() => {
         fetchWarehouses();
+    }, [fetchWarehouses]);
+
+    useEffect(() => {
         fetchMovements();
+    }, [fetchMovements]);
+
+    useEffect(() => {
         fetchInventory();
-    }, []);
-
-    useEffect(() => {
-        if (activeTab === 'movements') {
-            fetchMovements();
-        }
-    }, [selectedWarehouse, movementType, activeTab]);
-
-    useEffect(() => {
-        if (activeTab === 'inventory') {
-            fetchInventory();
-        }
-    }, [inventoryWarehouse, activeTab]);
+    }, [fetchInventory]);
 
     const getIcon = (type: string | null) => {
         switch (type) {

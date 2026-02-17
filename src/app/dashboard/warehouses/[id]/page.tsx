@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package, MapPin, Building2, Phone, User, ArrowRightLeft } from 'lucide-react';
@@ -25,7 +25,7 @@ export default function WarehouseDetailPage({ params }: { params: { id: string }
     const [loading, setLoading] = useState(true);
     const [dispatchOpen, setDispatchOpen] = useState(false);
 
-    const fetchDetails = async () => {
+    const fetchDetails = useCallback(async () => {
         try {
             const res = await fetch(`/api/warehouses/${params.id}`);
             if (res.ok) {
@@ -39,11 +39,11 @@ export default function WarehouseDetailPage({ params }: { params: { id: string }
         } finally {
             setLoading(false);
         }
-    };
+    }, [params.id]);
 
     useEffect(() => {
         fetchDetails();
-    }, [params.id]);
+    }, [fetchDetails]);
 
     if (loading) return <div className="p-6">Yükleniyor...</div>;
     if (!warehouse) return <div className="p-6">Depo bulunamadı</div>;

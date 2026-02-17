@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,11 +26,7 @@ export default function VendorProductDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  useEffect(() => {
-    fetchProduct()
-  }, [params.id])
-
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/vendor-tracking/${params.id}`)
@@ -76,7 +72,11 @@ export default function VendorProductDetailPage({ params }: PageProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, router])
+
+  useEffect(() => {
+    fetchProduct()
+  }, [fetchProduct])
 
   const getStatusColor = (status: string) => {
     switch (status) {
