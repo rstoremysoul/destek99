@@ -1,10 +1,12 @@
 {
-  "/api/installations/route": "app/api/installations/route.js",
   "/api/cargo/route": "app/api/cargo/route.js",
+  "/api/repairs/route": "app/api/repairs/route.js",
+  "/api/cargo-repairs/route": "app/api/cargo-repairs/route.js",
+  "/api/brands/all/route": "app/api/brands/all/route.js",
   "/dashboard/cargo/page": "app/dashboard/cargo/page.js",
   "/dashboard/repairs/cargo/[id]/page": "app/dashboard/repairs/cargo/[id]/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
   "/dashboard/repairs/page": "app/dashboard/repairs/page.js",
-  "/dashboard/tickets/[id]/page": "app/dashboard/tickets/[id]/page.js",
   "/dashboard/installations/page": "app/dashboard/installations/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/dashboard/settings/page": "app/dashboard/settings/page.js"
 }
