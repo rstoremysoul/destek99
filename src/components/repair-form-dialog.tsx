@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { DeviceRepair } from '@/types'
+import { DeviceRepair, Technician } from '@/types'
 
 interface RepairFormDialogProps {
   open: boolean
@@ -28,6 +28,7 @@ type RepairFormDraft = {
   warrantyEndDate: string
   estimatedCompletionDate: string
   repairCost: string
+  technicianId: string
 }
 
 export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDialogProps) {
@@ -44,9 +45,11 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
     warrantyEndDate: '',
     estimatedCompletionDate: '',
     repairCost: '',
+    technicianId: '',
   })
 
   const [brands, setBrands] = useState<string[]>([])
+  const [technicians, setTechnicians] = useState<Technician[]>([])
 
   useEffect(() => {
     if (open) {
@@ -54,6 +57,11 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
         .then(r => r.ok ? r.json() : [])
         .then((data) => setBrands(Array.isArray(data) ? data : []))
         .catch((e) => console.error('Error fetching brands:', e))
+
+      fetch('/api/technicians')
+        .then(r => r.ok ? r.json() : [])
+        .then((data) => setTechnicians(Array.isArray(data) ? data.filter((t: Technician) => t.active) : []))
+        .catch((e) => console.error('Error fetching technicians:', e))
     }
   }, [open])
 
@@ -79,6 +87,7 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
       estimatedCompletionDate: formData.estimatedCompletionDate ? new Date(formData.estimatedCompletionDate) : undefined,
       repairCost: formData.repairCost ? parseFloat(formData.repairCost) : undefined,
       brand: formData.brand || undefined,
+      assignedTechnician: formData.technicianId || undefined,
     }
 
     onSubmit(newRepair)
@@ -97,6 +106,7 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
       estimatedCompletionDate: '',
       repairCost: '',
       brand: '',
+      technicianId: '',
     })
 
     onOpenChange(false)
@@ -237,6 +247,26 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
                       <SelectItem value="medium">Orta</SelectItem>
                       <SelectItem value="high">Yüksek</SelectItem>
                       <SelectItem value="urgent">Acil</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Atanan Teknisyen</Label>
+                  <Select
+                    value={formData.technicianId || 'none'}
+                    onValueChange={(value) => setFormData({ ...formData, technicianId: value === 'none' ? '' : value })}
+                  >
+                    <SelectTrigger className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20">
+                      <SelectValue placeholder="Teknisyen secin (opsiyonel)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Secilmedi</SelectItem>
+                      {technicians.map((tech) => (
+                        <SelectItem key={tech.id} value={tech.id}>
+                          {tech.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

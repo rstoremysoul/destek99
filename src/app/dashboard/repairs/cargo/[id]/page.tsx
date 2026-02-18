@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Save, CheckCircle2, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -28,6 +29,7 @@ interface CargoRepairDetail {
   notes?: string
   devices: Array<{ id: string; deviceName: string; model: string; serialNumber: string }>
   repair?: {
+    technicianId?: string
     technicianName?: string
     operations?: string[]
     spareParts?: Array<{ name: string; quantity: number; unitCost: number }>
@@ -46,11 +48,19 @@ interface SparePartFormItem {
   unitCost: number
 }
 
+interface TechnicianOption {
+  id: string
+  name: string
+  active: boolean
+}
+
 export default function CargoRepairDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState<CargoRepairDetail | null>(null)
+  const [technicians, setTechnicians] = useState<TechnicianOption[]>([])
+  const [technicianId, setTechnicianId] = useState('')
   const [technicianName, setTechnicianName] = useState('')
   const [operations, setOperations] = useState<string[]>([])
   const [imageUrl, setImageUrl] = useState('')
@@ -69,6 +79,7 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
       }
       const json = await res.json()
       setData(json)
+      setTechnicianId(json?.repair?.technicianId || '')
       setTechnicianName(json?.repair?.technicianName || '')
       setOperations(Array.isArray(json?.repair?.operations) ? json.repair.operations : [])
       setImageUrl(json?.repair?.imageUrl || '')
@@ -86,6 +97,17 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (!data) return
+    fetch('/api/technicians')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list) => {
+        const normalized = Array.isArray(list) ? list.filter((t) => t?.active !== false) : []
+        setTechnicians(normalized)
+      })
+      .catch((error) => console.error('Failed to load technicians', error))
+  }, [data?.id])
 
   const toggleOperation = (op: string) => {
     setOperations((prev) => (prev.includes(op) ? prev.filter((x) => x !== op) : [...prev, op]))
@@ -113,6 +135,7 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          technicianId,
           technicianName,
           operations,
           imageUrl,
@@ -166,7 +189,31 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Tamiri Yapacak Personel</Label>
-            <Input value={technicianName} onChange={(e) => setTechnicianName(e.target.value)} placeholder="Personel adi" />
+            <Select
+              value={technicianId || 'none'}
+              onValueChange={(value) => {
+                if (value === 'none') {
+                  setTechnicianId('')
+                  setTechnicianName('')
+                  return
+                }
+                setTechnicianId(value)
+                const selected = technicians.find((t) => t.id === value)
+                setTechnicianName(selected?.name || '')
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Teknisyen secin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Secilmedi</SelectItem>
+                {technicians.map((tech) => (
+                  <SelectItem key={tech.id} value={tech.id}>
+                    {tech.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

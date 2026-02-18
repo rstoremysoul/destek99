@@ -6,8 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Building2, User, Phone, Calendar, Wrench, AlertCircle, DollarSign } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { ArrowLeft, Building2, User, Calendar, Wrench, AlertCircle, DollarSign } from 'lucide-react'
 import { DeviceRepair } from '@/types'
+import { toast } from 'sonner'
 
 interface PageProps {
   params: { id: string }
@@ -15,6 +20,19 @@ interface PageProps {
 
 export default function RepairDetailPage({ params }: PageProps) {
   const [repair, setRepair] = useState<DeviceRepair | null>(null)
+  const [technicians, setTechnicians] = useState<Array<{ id: string; name: string; active: boolean }>>([])
+  const [editMode, setEditMode] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [formData, setFormData] = useState({
+    status: 'received',
+    priority: 'medium',
+    technicianId: '',
+    problemDescription: '',
+    repairNotes: '',
+    estimatedCompletionDate: '',
+    completedDate: '',
+    repairCost: '',
+  })
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -53,6 +71,20 @@ export default function RepairDetailPage({ params }: PageProps) {
           updatedAt: new Date(data.updatedAt),
         }
         setRepair(mappedData)
+        setFormData({
+          status: mappedData.status,
+          priority: mappedData.priority,
+          technicianId: mappedData.technicianId || '',
+          problemDescription: mappedData.problemDescription || '',
+          repairNotes: mappedData.finalReport || '',
+          estimatedCompletionDate: mappedData.estimatedCompletionDate
+            ? new Date(mappedData.estimatedCompletionDate).toISOString().split('T')[0]
+            : '',
+          completedDate: mappedData.actualCompletionDate
+            ? new Date(mappedData.actualCompletionDate).toISOString().split('T')[0]
+            : '',
+          repairCost: typeof mappedData.repairCost === 'number' ? String(mappedData.repairCost) : '',
+        })
       } else if (response.status === 404) {
         router.push('/dashboard/repairs')
       }
@@ -66,6 +98,52 @@ export default function RepairDetailPage({ params }: PageProps) {
   useEffect(() => {
     fetchRepair()
   }, [fetchRepair])
+
+  useEffect(() => {
+    fetch('/api/technicians')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data.filter((item: any) => item.active) : []
+        setTechnicians(list)
+      })
+      .catch((error) => console.error('Error fetching technicians:', error))
+  }, [])
+
+  const handleSave = async () => {
+    try {
+      setSaving(true)
+      const response = await fetch(`/api/repairs/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: formData.status,
+          priority: formData.priority,
+          technicianId: formData.technicianId || null,
+          problemDescription: formData.problemDescription,
+          repairNotes: formData.repairNotes,
+          estimatedCompletion: formData.estimatedCompletionDate || null,
+          completedDate: formData.completedDate || null,
+          repairCost: formData.repairCost ? Number(formData.repairCost) : null,
+          totalCost: formData.repairCost ? Number(formData.repairCost) : null,
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        toast.error(err?.error || 'Kayit guncellenemedi')
+        return
+      }
+
+      toast.success('Tamir kaydi guncellendi')
+      setEditMode(false)
+      await fetchRepair()
+    } catch (error) {
+      console.error('Error updating repair:', error)
+      toast.error('Kayit guncellenemedi')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -164,6 +242,20 @@ export default function RepairDetailPage({ params }: PageProps) {
           </div>
 
           <div className="flex gap-2">
+            {editMode ? (
+              <>
+                <Button variant="outline" onClick={() => setEditMode(false)} disabled={saving}>
+                  Vazgec
+                </Button>
+                <Button onClick={handleSave} disabled={saving}>
+                  Kaydet
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" onClick={() => setEditMode(true)}>
+                Duzenle
+              </Button>
+            )}
             <Badge variant={getStatusColor(repair.status)} className="text-sm py-1">
               {getStatusText(repair.status)}
             </Badge>
@@ -249,7 +341,26 @@ export default function RepairDetailPage({ params }: PageProps) {
                     <Wrench className="h-4 w-4" />
                     Atanan Teknisyen
                   </p>
-                  <p className="font-medium">{repair.technicianName || 'Atanmam1_'}</p>
+                  {editMode ? (
+                    <Select
+                      value={formData.technicianId || 'none'}
+                      onValueChange={(value) => setFormData((prev) => ({ ...prev, technicianId: value === 'none' ? '' : value }))}
+                    >
+                      <SelectTrigger className="mt-1 max-w-xs">
+                        <SelectValue placeholder="Teknisyen secin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Secilmedi</SelectItem>
+                        {technicians.map((tech) => (
+                          <SelectItem key={tech.id} value={tech.id}>
+                            {tech.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{repair.technicianName || 'Atanmamis'}</p>
+                  )}
                 </div>
 
                 <div>
@@ -304,6 +415,73 @@ export default function RepairDetailPage({ params }: PageProps) {
         </TabsContent>
 
         <TabsContent value="repair" className="space-y-4">
+          {editMode && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Duzenleme Alanlari</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Durum</Label>
+                    <Select value={formData.status} onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="received">Alindi</SelectItem>
+                        <SelectItem value="diagnosing">Teshis Ediliyor</SelectItem>
+                        <SelectItem value="waiting_parts">Parca Bekleniyor</SelectItem>
+                        <SelectItem value="repairing">Tamir Ediliyor</SelectItem>
+                        <SelectItem value="testing">Test Ediliyor</SelectItem>
+                        <SelectItem value="completed">Tamamlandi</SelectItem>
+                        <SelectItem value="unrepairable">Tamir Edilemez</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Oncelik</Label>
+                    <Select value={formData.priority} onValueChange={(value) => setFormData((prev) => ({ ...prev, priority: value }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Dusuk</SelectItem>
+                        <SelectItem value="medium">Orta</SelectItem>
+                        <SelectItem value="high">Yuksek</SelectItem>
+                        <SelectItem value="urgent">Acil</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tahmini Tamamlanma</Label>
+                    <Input
+                      type="date"
+                      value={formData.estimatedCompletionDate}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, estimatedCompletionDate: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Gercek Tamamlanma</Label>
+                    <Input
+                      type="date"
+                      value={formData.completedDate}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, completedDate: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 max-w-xs">
+                  <Label>Onarim Maliyeti (TL)</Label>
+                  <Input
+                    type="number"
+                    value={formData.repairCost}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, repairCost: e.target.value }))}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -312,17 +490,33 @@ export default function RepairDetailPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{repair.problemDescription}</p>
+              {editMode ? (
+                <Textarea
+                  value={formData.problemDescription}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, problemDescription: e.target.value }))}
+                  rows={5}
+                />
+              ) : (
+                <p className="whitespace-pre-wrap">{repair.problemDescription}</p>
+              )}
             </CardContent>
           </Card>
 
-          {repair.finalReport && (
+          {(repair.finalReport || editMode) && (
             <Card>
               <CardHeader>
                 <CardTitle>Onar1m Notlar1</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-wrap">{repair.finalReport}</p>
+                {editMode ? (
+                  <Textarea
+                    value={formData.repairNotes}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, repairNotes: e.target.value }))}
+                    rows={5}
+                  />
+                ) : (
+                  <p className="whitespace-pre-wrap">{repair.finalReport}</p>
+                )}
               </CardContent>
             </Card>
           )}

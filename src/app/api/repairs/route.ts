@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
       include: {
         company: true,
         customer: true,
+        technician: true,
       },
       orderBy: {
         createdAt: 'desc',

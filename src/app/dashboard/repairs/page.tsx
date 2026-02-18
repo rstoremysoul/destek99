@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CargoRepairTicket, DeviceRepair } from '@/types'
-import { Plus, Search, Eye, Wrench, Calendar, CheckCircle, Clock, Shield } from 'lucide-react'
+import { Plus, Search, Eye, Wrench, Calendar, CheckCircle, Clock, Shield, Lock } from 'lucide-react'
 import { RepairFormDialog } from '@/components/repair-form-dialog'
 
 export default function RepairsPage() {
@@ -170,8 +170,17 @@ export default function RepairsPage() {
     return matchesSearch && matchesStatus && matchesPriority && matchesCompany && matchesDate
   })
 
-  const totalPages = Math.ceil(filteredRepairs.length / recordsPerPage)
-  const paginatedRepairs = filteredRepairs.slice(
+  const isClosedRepair = (status: string) => status === 'completed' || status === 'unrepairable'
+
+  const sortedFilteredRepairs = [...filteredRepairs].sort((a, b) => {
+    const aClosed = isClosedRepair(a.status) ? 1 : 0
+    const bClosed = isClosedRepair(b.status) ? 1 : 0
+    if (aClosed !== bClosed) return aClosed - bClosed
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+
+  const totalPages = Math.ceil(sortedFilteredRepairs.length / recordsPerPage)
+  const paginatedRepairs = sortedFilteredRepairs.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
   )
@@ -557,7 +566,7 @@ export default function RepairsPage() {
         <CardHeader>
           <CardTitle>Tamir Listesi</CardTitle>
           <CardDescription>
-            Toplam {filteredRepairs.length} kayıt gösteriliyor
+            Toplam {sortedFilteredRepairs.length} kayıt gösteriliyor (tamir edilenler kapalı olarak listelenir)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -580,7 +589,14 @@ export default function RepairsPage() {
               </thead>
               <tbody>
                 {paginatedRepairs.map((repair) => (
-                  <tr key={repair.id} className="border-b transition-colors hover:bg-muted/50">
+                  <tr
+                    key={repair.id}
+                    className={`border-b transition-colors hover:bg-muted/50 ${
+                      isClosedRepair(repair.status)
+                        ? 'bg-muted/40 text-muted-foreground border-l-4 border-l-muted-foreground/40'
+                        : ''
+                    }`}
+                  >
                     <td className="p-4 align-middle font-medium">
                       {repair.repairNumber}
                     </td>
@@ -597,7 +613,11 @@ export default function RepairsPage() {
                       {repair.serialNumber}
                     </td>
                     <td className="p-4 align-middle">
-                      <Badge variant={getStatusColor(repair.status)}>
+                      <Badge
+                        variant={isClosedRepair(repair.status) ? 'secondary' : getStatusColor(repair.status)}
+                        className="gap-1"
+                      >
+                        {isClosedRepair(repair.status) ? <Lock className="h-3 w-3" /> : null}
                         {getStatusText(repair.status)}
                       </Badge>
                     </td>
@@ -644,10 +664,10 @@ export default function RepairsPage() {
             )}
 
             {/* Sayfalama */}
-            {filteredRepairs.length > 0 && (
+            {sortedFilteredRepairs.length > 0 && (
               <div className="flex items-center justify-between px-2 py-4">
                 <div className="text-sm text-muted-foreground">
-                  {paginatedRepairs.length} kayıt gösteriliyor (toplam {filteredRepairs.length})
+                  {paginatedRepairs.length} kayıt gösteriliyor (toplam {sortedFilteredRepairs.length})
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button

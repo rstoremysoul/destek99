@@ -40,16 +40,21 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json()
+    const { assignedTechnician, technicianId: bodyTechnicianId, ...rest } = body || {}
+    const normalizedAssignedTechnician = typeof assignedTechnician === 'string' ? assignedTechnician : undefined
 
     const repair = await prisma.deviceRepair.update({
       where: { id: params.id },
       data: {
-        ...body,
-        receivedDate: body.receivedDate ? new Date(body.receivedDate) : undefined,
-        completedDate: body.completedDate ? new Date(body.completedDate) : undefined,
-        estimatedCompletion: body.estimatedCompletion ? new Date(body.estimatedCompletion) : undefined,
-        status: body.status?.toUpperCase(),
-        priority: body.priority?.toUpperCase(),
+        ...rest,
+        technicianId: normalizedAssignedTechnician !== undefined
+          ? (normalizedAssignedTechnician || null)
+          : (bodyTechnicianId !== undefined ? (bodyTechnicianId || null) : undefined),
+        receivedDate: rest.receivedDate ? new Date(rest.receivedDate) : undefined,
+        completedDate: rest.completedDate ? new Date(rest.completedDate) : undefined,
+        estimatedCompletion: rest.estimatedCompletion ? new Date(rest.estimatedCompletion) : undefined,
+        status: rest.status?.toUpperCase(),
+        priority: rest.priority?.toUpperCase(),
       },
       include: {
         company: true,

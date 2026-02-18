@@ -17,6 +17,7 @@ export interface CargoRepairSparePartItem {
 
 export interface CargoRepairMeta {
   active: boolean
+  technicianId?: string
   technicianName?: string
   operations: string[]
   imageUrl?: string

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,7 +61,34 @@ interface LookupItem {
   equivalentDeviceId?: string
 }
 
+interface LookupHistoryItem {
+  source: 'cargo' | 'repair' | 'installation' | 'equivalent'
+  date: string
+  title: string
+  details: string
+}
+
+interface DeviceModelOption {
+  id: string
+  name: string
+  active: boolean
+  brandId: string
+  brand: {
+    id: string
+    name: string
+    active: boolean
+  }
+}
+
 const DEFAULT_CARGO_COMPANIES = ['MNG Kargo', 'Aras Kargo', 'Yurtici Kargo']
+const DEFAULT_DEVICE_TYPES = [
+  'RobotPOS Cihaz',
+  'RobotPOS Musteri Gostergesi',
+  'Hugin Cihaz',
+  'RobotPOS Termal Yazici',
+  'OrderGo El Terminali',
+]
+const DEFAULT_INCOMING_ADDRESS = 'Merkez Ofis Deposu'
 
 const createEmptyDevice = (): DeviceFormData => ({
   sourceType: 'customer',
@@ -96,12 +123,73 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
   const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([])
   const [equivalentDevices, setEquivalentDevices] = useState<EquivalentDeviceOption[]>([])
   const [serialSuggestions, setSerialSuggestions] = useState<Record<number, LookupItem[]>>({})
+  const [serialHistory, setSerialHistory] = useState<Record<number, LookupHistoryItem[]>>({})
+  const [deviceTypes, setDeviceTypes] = useState<string[]>([])
+  const [deviceModels, setDeviceModels] = useState<DeviceModelOption[]>([])
   const [loadingCompanies, setLoadingCompanies] = useState(false)
+  const [trackingCheck, setTrackingCheck] = useState({
+    checking: false,
+    exists: false,
+    checkedValue: '',
+  })
+  const trackingCheckReqRef = useRef(0)
 
   const mergedCompanies = useMemo(
     () => Array.from(new Set([...DEFAULT_CARGO_COMPANIES, ...companies.map((company) => company.name)])),
     [companies]
   )
+  const mergedDeviceTypes = useMemo(
+    () => Array.from(new Set([...DEFAULT_DEVICE_TYPES, ...deviceTypes])),
+    [deviceTypes]
+  )
+
+  const headquartersWarehouse = useMemo(
+    () => warehouses.find((w) => /merkez|ofis/i.test(w.name)) || warehouses[0],
+    [warehouses]
+  )
+  const initialTrackingNumber = (initialData?.trackingNumber || '').trim()
+
+  const checkTrackingConflict = async (rawTrackingNumber: string) => {
+    const trackingNumber = rawTrackingNumber.trim()
+    if (!trackingNumber) {
+      setTrackingCheck({ checking: false, exists: false, checkedValue: '' })
+      return false
+    }
+
+    if (mode === 'edit' && trackingNumber === initialTrackingNumber) {
+      setTrackingCheck({ checking: false, exists: false, checkedValue: trackingNumber })
+      return false
+    }
+
+    const requestId = ++trackingCheckReqRef.current
+    setTrackingCheck((prev) => ({ ...prev, checking: true }))
+
+    try {
+      const params = new URLSearchParams({ trackingNumber })
+      if (mode === 'edit' && initialData?.id) {
+        params.set('excludeId', initialData.id)
+      }
+      const res = await fetch(`/api/cargo/check-tracking?${params.toString()}`)
+      if (!res.ok) {
+        if (requestId === trackingCheckReqRef.current) {
+          setTrackingCheck({ checking: false, exists: false, checkedValue: trackingNumber })
+        }
+        return false
+      }
+      const data = await res.json()
+      const exists = Boolean(data?.exists)
+      if (requestId === trackingCheckReqRef.current) {
+        setTrackingCheck({ checking: false, exists, checkedValue: trackingNumber })
+      }
+      return exists
+    } catch (error) {
+      console.error('Tracking number check failed', error)
+      if (requestId === trackingCheckReqRef.current) {
+        setTrackingCheck({ checking: false, exists: false, checkedValue: trackingNumber })
+      }
+      return false
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -141,6 +229,20 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
         setEquivalentDevices(normalized)
       })
       .catch((err) => console.error('Failed to load equivalent devices', err))
+
+    fetch('/api/brands')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setDeviceTypes(data)
+      })
+      .catch((err) => console.error('Failed to load device types', err))
+
+    fetch('/api/models/all')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setDeviceModels(data)
+      })
+      .catch((err) => console.error('Failed to load models', err))
 
     if (initialData) {
       const sentDate = initialData.sentDate
@@ -185,8 +287,43 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
         sentDate: prev.sentDate || new Date().toISOString().split('T')[0],
       }))
       setDevices([createEmptyDevice()])
+      setSerialHistory({})
     }
   }, [open, initialData])
+
+  useEffect(() => {
+    if (!open) return
+    if (formData.type !== 'INCOMING') return
+    if (!headquartersWarehouse?.id) return
+
+    setFormData((prev) => {
+      if (prev.targetLocationId === headquartersWarehouse.id && prev.destination === 'HEADQUARTERS') {
+        return prev
+      }
+      return {
+        ...prev,
+        targetLocationId: headquartersWarehouse.id,
+        destination: 'HEADQUARTERS',
+        destinationAddress: DEFAULT_INCOMING_ADDRESS,
+      }
+    })
+  }, [open, formData.type, headquartersWarehouse?.id, headquartersWarehouse?.name])
+
+  useEffect(() => {
+    if (!open) return
+
+    const trackingNumber = formData.trackingNumber.trim()
+    if (!trackingNumber) {
+      setTrackingCheck({ checking: false, exists: false, checkedValue: '' })
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      checkTrackingConflict(trackingNumber)
+    }, 350)
+
+    return () => clearTimeout(timeout)
+  }, [open, formData.trackingNumber, mode, initialData?.id, initialTrackingNumber])
 
   const updateDevice = (index: number, patch: Partial<DeviceFormData>) => {
     setDevices((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
@@ -197,6 +334,12 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
   const removeDevice = (index: number) => {
     if (devices.length <= 1) return
     setDevices((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const modelsForType = (deviceType: string) => {
+    return deviceModels
+      .filter((item) => item.active && item.brand?.name === deviceType)
+      .map((item) => item.name)
   }
 
   const handleSourceTypeChange = (index: number, sourceType: DeviceSourceType) => {
@@ -275,6 +418,7 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
       customerName: '',
       customerCompanyName: '',
     })
+    setSerialHistory((prev) => ({ ...prev, [index]: [] }))
     fetchSerialSuggestions(index, serialNumber)
   }
 
@@ -297,13 +441,21 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
         customerName: data.customerName || devices[index].customerName,
         customerCompanyName: data.companyName || devices[index].customerCompanyName,
       })
+      const history = Array.isArray(data.history) ? data.history : []
+      setSerialHistory((prev) => ({ ...prev, [index]: history }))
     } catch (error) {
       console.error('Serial lookup failed', error)
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const trackingConflict = await checkTrackingConflict(formData.trackingNumber)
+    if (trackingConflict) {
+      toast.error('Bu takip numarasi zaten kayitli')
+      return
+    }
 
     const invalidEquivalent = devices.find((d) => d.sourceType === 'equivalent' && !d.equivalentDeviceId)
     if (invalidEquivalent) {
@@ -317,6 +469,17 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
       return
     }
 
+    const invalidDeviceInfo = devices.find((d) => d.sourceType !== 'equivalent' && (!d.deviceName || !d.model))
+    if (invalidDeviceInfo) {
+      toast.error('Cihaz adi ve model secimi zorunludur')
+      return
+    }
+
+    if (formData.type !== 'INCOMING' && !formData.destinationAddress.trim()) {
+      toast.error('Teslimat adresi zorunludur')
+      return
+    }
+
     const payload: any = {
       trackingNumber: formData.trackingNumber,
       type: formData.type.toLowerCase(),
@@ -326,10 +489,14 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
       receiver: formData.receiver,
       cargoCompany: formData.cargoCompany,
       sentDate: formData.sentDate ? new Date(formData.sentDate).toISOString() : new Date().toISOString(),
-      destination: formData.destination,
-      destinationAddress: formData.destinationAddress,
+      destination: formData.type === 'INCOMING' ? 'HEADQUARTERS' : 'CUSTOMER',
+      destinationAddress: formData.type === 'INCOMING'
+        ? DEFAULT_INCOMING_ADDRESS
+        : formData.destinationAddress,
       notes: formData.notes,
-      targetLocationId: formData.targetLocationId,
+      targetLocationId: formData.type === 'INCOMING'
+        ? (formData.targetLocationId || headquartersWarehouse?.id || '')
+        : '',
       devices: devices.map((device) => ({
         sourceType: device.sourceType,
         equivalentDeviceId: device.equivalentDeviceId || undefined,
@@ -358,10 +525,12 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
         destinationAddress: '',
         sentDate: new Date().toISOString().split('T')[0],
         notes: '',
-        targetLocationId: '',
+        targetLocationId: headquartersWarehouse?.id || '',
       })
       setDevices([createEmptyDevice()])
       setSerialSuggestions({})
+      setSerialHistory({})
+      setTrackingCheck({ checking: false, exists: false, checkedValue: '' })
     }
 
     onOpenChange(false)
@@ -387,6 +556,14 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
                 placeholder="TK123456"
                 required
               />
+              {trackingCheck.checking && (
+                <p className="text-xs text-muted-foreground">Takip numarasi kontrol ediliyor...</p>
+              )}
+              {!trackingCheck.checking &&
+                trackingCheck.exists &&
+                trackingCheck.checkedValue === formData.trackingNumber.trim() && (
+                  <p className="text-xs text-red-600">Bu takip numarasi zaten kayitli.</p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -413,7 +590,18 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
 
             <div className="space-y-2">
               <Label>Kargo Tipi *</Label>
-              <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+              <Select
+                value={formData.type}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    type: value,
+                    destination: value === 'INCOMING' ? 'HEADQUARTERS' : 'CUSTOMER',
+                    destinationAddress: value === 'INCOMING' ? DEFAULT_INCOMING_ADDRESS : prev.destinationAddress,
+                    targetLocationId: value === 'INCOMING' ? (headquartersWarehouse?.id || prev.targetLocationId) : '',
+                  }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -451,47 +639,23 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
               <Input value={formData.receiver} onChange={(e) => setFormData({ ...formData, receiver: e.target.value })} required />
             </div>
 
-            <div className="space-y-2">
-              <Label>Hedef *</Label>
-              <Select value={formData.destination} onValueChange={(value) => setFormData({ ...formData, destination: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CUSTOMER">Musteri</SelectItem>
-                  <SelectItem value="DISTRIBUTOR">Distributor</SelectItem>
-                  <SelectItem value="BRANCH">Sube</SelectItem>
-                  <SelectItem value="HEADQUARTERS">Merkez</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {formData.type === 'INCOMING' && (
               <div className="space-y-2">
                 <Label>Giris Lokasyonu</Label>
-                <Select value={formData.targetLocationId} onValueChange={(value) => setFormData({ ...formData, targetLocationId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Depo secin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {warehouses.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input value={headquartersWarehouse?.name || DEFAULT_INCOMING_ADDRESS} readOnly />
               </div>
             )}
 
-            <div className="space-y-2 md:col-span-2">
-              <Label>Teslimat Adresi *</Label>
-              <Textarea
-                value={formData.destinationAddress}
-                onChange={(e) => setFormData({ ...formData, destinationAddress: e.target.value })}
-                required
-              />
-            </div>
+            {formData.type !== 'INCOMING' && (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Teslimat Adresi *</Label>
+                <Textarea
+                  value={formData.destinationAddress}
+                  onChange={(e) => setFormData({ ...formData, destinationAddress: e.target.value })}
+                  required
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 p-4 rounded-lg border">
@@ -505,6 +669,14 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
                   onClick={() => window.open('/dashboard/equivalent-devices', '_blank')}
                 >
                   Muadil Listesini Yonet
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => window.open('/dashboard/settings', '_blank')}
+                >
+                  Tur/Model Listesini Yonet
                 </Button>
                 <Button type="button" variant="outline" size="sm" onClick={addDevice}>
                   <Plus className="h-4 w-4 mr-1" />
@@ -587,24 +759,49 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
 
                     <div className="space-y-1">
                       <Label className="text-xs">Cihaz Adi *</Label>
-                      <Input
-                        value={device.deviceName}
-                        onChange={(e) => updateDevice(index, { deviceName: e.target.value })}
-                        className="h-9"
-                        required
-                        disabled={device.sourceType === 'equivalent'}
-                      />
+                      {device.sourceType === 'equivalent' ? (
+                        <Input value={device.deviceName} className="h-9" required disabled />
+                      ) : (
+                        <Select
+                          value={device.deviceName}
+                          onValueChange={(value) => updateDevice(index, { deviceName: value, model: '' })}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Cihaz turu secin" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {mergedDeviceTypes.map((typeName) => (
+                              <SelectItem key={typeName} value={typeName}>
+                                {typeName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
 
                     <div className="space-y-1">
                       <Label className="text-xs">Model *</Label>
-                      <Input
-                        value={device.model}
-                        onChange={(e) => updateDevice(index, { model: e.target.value })}
-                        className="h-9"
-                        required
-                        disabled={device.sourceType === 'equivalent'}
-                      />
+                      {device.sourceType === 'equivalent' ? (
+                        <Input value={device.model} className="h-9" required disabled />
+                      ) : (
+                        <Select
+                          value={device.model}
+                          onValueChange={(value) => updateDevice(index, { model: value })}
+                          disabled={!device.deviceName}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder={device.deviceName ? 'Model secin' : 'Once cihaz turu secin'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {modelsForType(device.deviceName).map((modelName) => (
+                              <SelectItem key={`${device.deviceName}-${modelName}`} value={modelName}>
+                                {modelName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -655,6 +852,21 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
                       Bulunan Musteri Bilgisi: {device.customerName || '-'} / {device.customerCompanyName || '-'}
                     </div>
                   )}
+
+                  {device.sourceType !== 'equivalent' && (serialHistory[index] || []).length > 0 && (
+                    <div className="rounded border bg-muted/40 p-2 space-y-2">
+                      <div className="text-xs font-medium">Bu seri no icin onceki islemler</div>
+                      <div className="space-y-1">
+                        {serialHistory[index].map((item, historyIndex) => (
+                          <div key={`${item.source}-${item.date}-${historyIndex}`} className="text-xs">
+                            <div className="font-medium">{item.title}</div>
+                            <div className="text-muted-foreground">{new Date(item.date).toLocaleDateString('tr-TR')}</div>
+                            <div className="text-muted-foreground">{item.details}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -669,7 +881,9 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Iptal
             </Button>
-            <Button type="submit">{mode === 'edit' ? 'Kaydi Guncelle' : 'Kaydi Olustur'}</Button>
+            <Button type="submit" disabled={trackingCheck.checking || trackingCheck.exists}>
+              {mode === 'edit' ? 'Kaydi Guncelle' : 'Kaydi Olustur'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

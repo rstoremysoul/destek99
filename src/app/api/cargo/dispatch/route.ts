@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+function generateEquivalentDeviceNumber() {
+  return `AUTO-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 90 + 10)}`
+}
+
 // POST - Dispatch only predefined equivalent devices to a location
 export async function POST(request: NextRequest) {
   try {
@@ -79,13 +83,29 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        const equivalentDevice = await tx.equivalentDevice.findUnique({
+        let equivalentDevice = await tx.equivalentDevice.findUnique({
           where: { serialNumber: device.serialNumber },
         })
 
         if (!equivalentDevice) {
-          skippedSerials.push(device.serialNumber)
-          continue
+          // If device is not in equivalent inventory yet, create it automatically.
+          equivalentDevice = await tx.equivalentDevice.create({
+            data: {
+              deviceNumber: generateEquivalentDeviceNumber(),
+              deviceName: device.deviceName || 'Bilinmeyen Cihaz',
+              brand: 'GENEL',
+              model: device.model || '-',
+              serialNumber: device.serialNumber,
+              locationId: targetLocationId,
+              currentLocation: newLocation,
+              status: 'AVAILABLE',
+              recordStatus: 'OPEN',
+              condition: 'GOOD',
+              notes: `Kargo ${cargo.trackingNumber} sevk isleminde otomatik olusturuldu`,
+              createdBy: 'SYSTEM',
+              createdByName: 'Sistem',
+            },
+          })
         }
 
         await tx.equivalentDevice.update({

@@ -1,49 +1,89 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
 
-// Marka-model eþleþtirmesi
-const BRAND_MODELS: { [key: string]: string[] } = {
-  'ROBOTPOS': ['M', 'MK', 'VINTEC', 'EC-LINE', 'EL-LINE', 'RP-81'],
-  'HUGIN': ['POS-80', 'POS-58', 'THERMAL-80'],
-  'POSSIFY': ['P1', 'P2', 'P3', 'MINI'],
-  'POSSAFE': ['PS-100', 'PS-200', 'PS-300'],
-  'POSINESS': ['PN-80', 'PN-58'],
-  'DESMAK': ['D-100', 'D-200', 'THERMAL'],
-  'INGENIGO': ['IG-100', 'IG-200', 'SMART'],
-  'SERVIS POINT': ['SP-80', 'SP-58', 'MINI'],
-  'TECPRO': ['TP-100', 'TP-200', 'PRO'],
-  'PERKON': ['PK-80', 'PK-58'],
-  'ERAY': ['E-100', 'E-200'],
-  'AFANDA': ['AF-80', 'AF-58'],
-  'SETSIS': ['ST-100', 'ST-200'],
-  'DENIZ YUKSEL': ['DY-80', 'DY-100'],
-  'SAFIR TEKNOLOJI': ['SF-100', 'SF-200'],
-  'CAS': ['CAS-80', 'CAS-100', 'SCALE'],
-  'ALATEL': ['AL-100', 'AL-200']
-}
-
-// GET models for a specific brand
+// GET active models for a specific device type (brand table is used as device type dictionary)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const brand = searchParams.get('brand')
+    const brand = (searchParams.get('brand') || '').trim()
 
     if (!brand) {
-      return NextResponse.json(
-        { error: 'Brand parameter is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Brand parameter is required' }, { status: 400 })
     }
 
-    const models = BRAND_MODELS[brand] || []
-    return NextResponse.json(models.sort())
+    const brandRecord = await db.deviceBrand.findFirst({
+      where: { name: brand },
+      select: { id: true },
+    })
+
+    if (!brandRecord) {
+      return NextResponse.json([])
+    }
+
+    const models = await db.deviceModel.findMany({
+      where: {
+        brandId: brandRecord.id,
+        active: true,
+      },
+      orderBy: { name: 'asc' },
+      select: { name: true },
+    })
+
+    return NextResponse.json(models.map((m) => m.name))
   } catch (error) {
     console.error('Error fetching models:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch models' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch models' }, { status: 500 })
   }
 }
 
+// POST create model for a device type
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const brandName = String(body?.brand || '').trim()
+    const name = String(body?.name || '').trim()
 
+    if (!brandName || !name) {
+      return NextResponse.json({ error: 'Brand and model name are required' }, { status: 400 })
+    }
+
+    const brand = await db.deviceBrand.upsert({
+      where: { name: brandName },
+      update: { active: true },
+      create: { name: brandName, active: true },
+      select: { id: true },
+    })
+
+    const existing = await db.deviceModel.findFirst({
+      where: {
+        brandId: brand.id,
+        name,
+      },
+    })
+
+    if (existing) {
+      if (!existing.active) {
+        const reactivated = await db.deviceModel.update({
+          where: { id: existing.id },
+          data: { active: true },
+        })
+        return NextResponse.json(reactivated)
+      }
+      return NextResponse.json(existing)
+    }
+
+    const created = await db.deviceModel.create({
+      data: {
+        brandId: brand.id,
+        name,
+        active: true,
+      },
+    })
+
+    return NextResponse.json(created, { status: 201 })
+  } catch (error) {
+    console.error('Error creating model:', error)
+    return NextResponse.json({ error: 'Failed to create model' }, { status: 500 })
+  }
+}

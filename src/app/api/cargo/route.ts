@@ -204,17 +204,24 @@ export async function POST(request: NextRequest) {
 
     const deviceList = Array.isArray(devices) ? devices : []
 
+    const resolvedType = typeMap[type?.toLowerCase()] || CargoType.OUTGOING
+    const isIncoming = resolvedType === CargoType.INCOMING
+
     const createData: any = {
       trackingNumber: normalizedTrackingNumber,
-      type: typeMap[type?.toLowerCase()] || CargoType.OUTGOING,
+      type: resolvedType,
       status: statusMap[status?.toLowerCase()] || CargoStatus.IN_TRANSIT,
       sender,
       receiver,
       cargoCompany: cargoCompany || '',
       sentDate: sentDate ? new Date(sentDate) : null,
       deliveredDate: deliveredDate ? new Date(deliveredDate) : null,
-      destination: destinationMap[destination?.toLowerCase()] || CargoDestination.CUSTOMER,
-      destinationAddress,
+      destination: isIncoming
+        ? CargoDestination.HEADQUARTERS
+        : (destinationMap[destination?.toLowerCase()] || CargoDestination.CUSTOMER),
+      destinationAddress: isIncoming
+        ? (typeof destinationAddress === 'string' && destinationAddress.trim() ? destinationAddress : DEFAULT_HQ_NAME)
+        : destinationAddress,
       notes,
       devices: {
         create: deviceList.map((device: any) => ({
@@ -270,7 +277,7 @@ export async function POST(request: NextRequest) {
     }
 
     // --- AUTOMATIC WAREHOUSE ASSIGNMENT FOR INCOMING CARGO ---
-    if (typeMap[type?.toLowerCase()] === CargoType.INCOMING) {
+    if (resolvedType === CargoType.INCOMING) {
       try {
         let targetLocation;
 
