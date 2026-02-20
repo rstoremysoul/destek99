@@ -62,8 +62,12 @@ export async function PATCH(
       imageUrl,
       repairNote,
       spareParts,
+      approvalStatus,
+      approvalNote,
       laborCost,
       partsCost,
+      distributorCost,
+      internalServiceCost,
       totalCost,
       action,
     } = body || {}
@@ -79,6 +83,22 @@ export async function PATCH(
       return NextResponse.json({ error: 'Cargo not found' }, { status: 404 })
     }
 
+    const normalizedApprovalStatus =
+      approvalStatus === 'approved' || approvalStatus === 'rejected' ? approvalStatus : 'pending'
+    const normalizedApprovalNote = String(approvalNote || '').trim()
+    const normalizedLaborCost = typeof laborCost === 'number' ? laborCost : 0
+    const normalizedPartsCost = typeof partsCost === 'number' ? partsCost : 0
+    const normalizedDistributorCost = typeof distributorCost === 'number' ? distributorCost : 0
+    const normalizedInternalServiceCost = typeof internalServiceCost === 'number' ? internalServiceCost : 0
+    const normalizedTotalCost =
+      typeof totalCost === 'number'
+        ? totalCost
+        : normalizedLaborCost + normalizedPartsCost + normalizedDistributorCost + normalizedInternalServiceCost
+
+    if (action === 'complete' && normalizedApprovalStatus === 'rejected' && !normalizedApprovalNote) {
+      return NextResponse.json({ error: 'Onay reddedildi secildiginde aciklama notu zorunludur' }, { status: 400 })
+    }
+
     let nextNotes = upsertCargoRepairMeta(cargo.notes, {
       active: true,
       status: 'in_progress',
@@ -88,9 +108,15 @@ export async function PATCH(
       imageUrl: imageUrl || '',
       note: repairNote || '',
       spareParts: Array.isArray(spareParts) ? spareParts : [],
-      laborCost: typeof laborCost === 'number' ? laborCost : 0,
-      partsCost: typeof partsCost === 'number' ? partsCost : 0,
-      totalCost: typeof totalCost === 'number' ? totalCost : 0,
+      approvalStatus: normalizedApprovalStatus,
+      approvalAt: normalizedApprovalStatus === 'pending' ? '' : new Date().toISOString(),
+      approvalNote: normalizedApprovalNote,
+      laborCost: normalizedLaborCost,
+      partsCost: normalizedPartsCost,
+      distributorCost: normalizedDistributorCost,
+      internalServiceCost: normalizedInternalServiceCost,
+      totalCost: normalizedTotalCost,
+      shipmentStatus: 'pending',
     })
 
     if (action === 'complete') {
@@ -140,6 +166,13 @@ export async function PATCH(
         const sparePartsText = Array.isArray(spareParts) && spareParts.length > 0
           ? spareParts.map((p: any) => `${p.name || '-'} x${Number(p.quantity) || 0} (${Number(p.unitCost || 0).toFixed(2)} TL)`).join(' | ')
           : 'Parca kullanilmadi'
+        const approvalStatusText =
+          normalizedApprovalStatus === 'approved'
+            ? 'Musteri onayi alindi'
+            : normalizedApprovalStatus === 'rejected'
+              ? 'Musteri reddetti - tamirsiz iade'
+              : 'Onay bilgisi belirtilmedi'
+        const approvalLine = normalizedApprovalNote ? `\nOnay Notu: ${normalizedApprovalNote}` : ''
 
         await prisma.deviceRepair.create({
           data: {
@@ -153,17 +186,23 @@ export async function PATCH(
             receivedDate: cargo.createdAt,
             completedDate: new Date(),
             estimatedCompletion: null,
-            status: RepairStatus.COMPLETED,
+            status: normalizedApprovalStatus === 'rejected' ? RepairStatus.UNREPAIRABLE : RepairStatus.COMPLETED,
             priority: Priority.MEDIUM,
-            problemDescription: String(repairNote || '').trim() || `Kargo tamir kaydi (${cargo.trackingNumber})`,
-            diagnosisNotes: `Kargo ticket: ${cargo.trackingNumber} | Teknisyen: ${technicianName || '-'} | Islemler: ${operationsText}`,
-            repairNotes: `${marker}\nTeknisyen: ${technicianName || '-'}\nIslemler: ${operationsText}\nYedek Parcalar: ${sparePartsText}\nNot: ${repairNote || '-'}\nToplam Maliyet: ${(typeof totalCost === 'number' ? totalCost : 0).toFixed(2)} TL`,
+            problemDescription:
+              String(repairNote || '').trim() ||
+              (normalizedApprovalStatus === 'rejected'
+                ? `Musteri onayi reddedildi - tamirsiz iade (${cargo.trackingNumber})`
+                : `Kargo tamir kaydi (${cargo.trackingNumber})`),
+            diagnosisNotes: `Kargo ticket: ${cargo.trackingNumber} | Teknisyen: ${technicianName || '-'} | Islemler: ${operationsText} | Onay: ${approvalStatusText}`,
+            repairNotes: `${marker}\nTeknisyen: ${technicianName || '-'}\nIslemler: ${operationsText}\nYedek Parcalar: ${sparePartsText}\nOnay: ${approvalStatusText}${approvalLine}\nNot: ${repairNote || '-'}\nToplam Maliyet: ${normalizedTotalCost.toFixed(2)} TL`,
             isWarranty: false,
             warrantyInfo: null,
-            laborCost: typeof laborCost === 'number' ? laborCost : 0,
-            partsCost: typeof partsCost === 'number' ? partsCost : 0,
-            totalCost: typeof totalCost === 'number' ? totalCost : 0,
-            repairCost: typeof totalCost === 'number' ? totalCost : 0,
+            laborCost: normalizedLaborCost,
+            partsCost: normalizedPartsCost,
+            distributorCost: normalizedDistributorCost,
+            internalServiceCost: normalizedInternalServiceCost,
+            totalCost: normalizedTotalCost,
+            repairCost: normalizedTotalCost,
             technicianId: technicianId || null,
           },
         })
@@ -173,17 +212,25 @@ export async function PATCH(
         nextNotes,
         {
           at: new Date().toISOString(),
-          action: 'Cihaz onarimi tamamlandi',
+          action: normalizedApprovalStatus === 'rejected' ? 'Musteri onayi reddedildi, tamirsiz iade icin kayit kapatildi' : 'Cihaz onarimi tamamlandi',
           technicianName: technicianName || '',
           operations: Array.isArray(operations) ? operations : [],
           note: repairNote || '',
-          laborCost: typeof laborCost === 'number' ? laborCost : 0,
-          partsCost: typeof partsCost === 'number' ? partsCost : 0,
-          totalCost: typeof totalCost === 'number' ? totalCost : 0,
+          approvalStatus: normalizedApprovalStatus,
+          approvalNote: normalizedApprovalNote,
+          laborCost: normalizedLaborCost,
+          partsCost: normalizedPartsCost,
+          distributorCost: normalizedDistributorCost,
+          internalServiceCost: normalizedInternalServiceCost,
+          totalCost: normalizedTotalCost,
         },
         {
           active: false,
           status: 'completed',
+          shipmentStatus: 'ready_to_ship',
+          approvalStatus: normalizedApprovalStatus,
+          approvalAt: normalizedApprovalStatus === 'pending' ? '' : new Date().toISOString(),
+          approvalNote: normalizedApprovalNote,
         }
       )
     } else {
@@ -195,13 +242,21 @@ export async function PATCH(
           technicianName: technicianName || '',
           operations: Array.isArray(operations) ? operations : [],
           note: repairNote || '',
-          laborCost: typeof laborCost === 'number' ? laborCost : 0,
-          partsCost: typeof partsCost === 'number' ? partsCost : 0,
-          totalCost: typeof totalCost === 'number' ? totalCost : 0,
+          approvalStatus: normalizedApprovalStatus,
+          approvalNote: normalizedApprovalNote,
+          laborCost: normalizedLaborCost,
+          partsCost: normalizedPartsCost,
+          distributorCost: normalizedDistributorCost,
+          internalServiceCost: normalizedInternalServiceCost,
+          totalCost: normalizedTotalCost,
         },
         {
           active: true,
           status: 'in_progress',
+          approvalStatus: normalizedApprovalStatus,
+          approvalAt: normalizedApprovalStatus === 'pending' ? '' : new Date().toISOString(),
+          approvalNote: normalizedApprovalNote,
+          shipmentStatus: 'pending',
         }
       )
     }
@@ -224,7 +279,7 @@ export async function PATCH(
       trackingNumber: updated.trackingNumber,
       notes: cleanNotes,
       repair: meta,
-      recordStatus: action === 'complete' ? 'open' : 'device_repair',
+      recordStatus: action === 'complete' ? 'ready_to_ship' : 'device_repair',
       devices: updated.devices,
       updatedAt: updated.updatedAt,
     })

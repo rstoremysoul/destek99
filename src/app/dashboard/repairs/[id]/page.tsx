@@ -10,12 +10,77 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ArrowLeft, Building2, User, Calendar, Wrench, AlertCircle, DollarSign } from 'lucide-react'
 import { DeviceRepair } from '@/types'
 import { toast } from 'sonner'
 
 interface PageProps {
   params: { id: string }
+}
+
+const REPAIR_OPERATIONS = [
+  'Dokunmatik Degisimi',
+  'Yazici Kafasi Degisimi',
+  'Anakart Onarimi',
+  'Anakart Degisimi',
+  'Soket Onarimi',
+  'Yazilim / Image',
+]
+
+type RepairTicketMeta = {
+  operations: string[]
+  customerApprovalStatus: 'pending' | 'approved' | 'rejected'
+  approvalNote: string
+}
+
+const REPAIR_META_TAG = '[[REPAIR_TICKET_META]]'
+
+function parseRepairTicketMeta(raw?: string | null): { cleanNotes: string; meta: RepairTicketMeta } {
+  const text = String(raw || '')
+  if (!text.includes(REPAIR_META_TAG)) {
+    return {
+      cleanNotes: text,
+      meta: { operations: [], customerApprovalStatus: 'pending', approvalNote: '' },
+    }
+  }
+
+  const lines = text.split('\n')
+  const cleanLines: string[] = []
+  let parsed: RepairTicketMeta | null = null
+
+  for (const line of lines) {
+    if (!line.startsWith(REPAIR_META_TAG)) {
+      cleanLines.push(line)
+      continue
+    }
+    try {
+      const payload = JSON.parse(line.slice(REPAIR_META_TAG.length).trim())
+      parsed = {
+        operations: Array.isArray(payload?.operations) ? payload.operations : [],
+        customerApprovalStatus:
+          payload?.customerApprovalStatus === 'approved' || payload?.customerApprovalStatus === 'rejected'
+            ? payload.customerApprovalStatus
+            : 'pending',
+        approvalNote: String(payload?.approvalNote || ''),
+      }
+    } catch {
+      parsed = null
+    }
+  }
+
+  return {
+    cleanNotes: cleanLines.join('\n').trim(),
+    meta: parsed || { operations: [], customerApprovalStatus: 'pending', approvalNote: '' },
+  }
+}
+
+function buildRepairNotesWithMeta(cleanNotes: string, meta: RepairTicketMeta) {
+  const parts = [
+    String(cleanNotes || '').trim(),
+    `${REPAIR_META_TAG}${JSON.stringify(meta)}`,
+  ].filter(Boolean)
+  return parts.join('\n')
 }
 
 export default function RepairDetailPage({ params }: PageProps) {
@@ -32,6 +97,11 @@ export default function RepairDetailPage({ params }: PageProps) {
     estimatedCompletionDate: '',
     completedDate: '',
     repairCost: '',
+    partsCost: '',
+    distributorCost: '',
+    operations: [] as string[],
+    customerApprovalStatus: 'pending' as 'pending' | 'approved' | 'rejected',
+    approvalNote: '',
   })
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -42,6 +112,7 @@ export default function RepairDetailPage({ params }: PageProps) {
       const response = await fetch(`/api/repairs/${params.id}`)
       if (response.ok) {
         const data = await response.json()
+        const parsedMeta = parseRepairTicketMeta(data.repairNotes)
         // Map database format to component format
         const mappedData: DeviceRepair = {
           id: data.id,
@@ -62,11 +133,13 @@ export default function RepairDetailPage({ params }: PageProps) {
           estimatedCompletionDate: data.estimatedCompletion ? new Date(data.estimatedCompletion) : undefined,
           actualCompletionDate: data.completedDate ? new Date(data.completedDate) : undefined,
           repairCost: data.repairCost || data.totalCost,
+          distributorCost: data.distributorCost,
+          internalServiceCost: data.internalServiceCost,
           isWarranty: data.isWarranty,
           warrantyEndDate: data.warrantyInfo ? undefined : undefined,
           partsUsed: [],
           repairNotes: [],
-          finalReport: data.repairNotes,
+          finalReport: parsedMeta.cleanNotes,
           createdAt: new Date(data.createdAt),
           updatedAt: new Date(data.updatedAt),
         }
@@ -84,6 +157,11 @@ export default function RepairDetailPage({ params }: PageProps) {
             ? new Date(mappedData.actualCompletionDate).toISOString().split('T')[0]
             : '',
           repairCost: typeof mappedData.repairCost === 'number' ? String(mappedData.repairCost) : '',
+          partsCost: typeof data.partsCost === 'number' ? String(data.partsCost) : '',
+          distributorCost: typeof data.distributorCost === 'number' ? String(data.distributorCost) : '',
+          operations: parsedMeta.meta.operations || [],
+          customerApprovalStatus: parsedMeta.meta.customerApprovalStatus || 'pending',
+          approvalNote: parsedMeta.meta.approvalNote || '',
         })
       } else if (response.status === 404) {
         router.push('/dashboard/repairs')
@@ -112,6 +190,16 @@ export default function RepairDetailPage({ params }: PageProps) {
   const handleSave = async () => {
     try {
       setSaving(true)
+      const normalizedRepairCost = formData.repairCost ? Number(formData.repairCost) : 0
+      const normalizedPartsCost = formData.partsCost ? Number(formData.partsCost) : 0
+      const normalizedDistributorCost = formData.distributorCost ? Number(formData.distributorCost) : 0
+      const normalizedInternalServiceCost = Math.max(0, normalizedRepairCost - normalizedPartsCost - normalizedDistributorCost)
+      const composedRepairNotes = buildRepairNotesWithMeta(formData.repairNotes, {
+        operations: formData.operations,
+        customerApprovalStatus: formData.customerApprovalStatus,
+        approvalNote: formData.approvalNote,
+      })
+
       const response = await fetch(`/api/repairs/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -120,11 +208,14 @@ export default function RepairDetailPage({ params }: PageProps) {
           priority: formData.priority,
           technicianId: formData.technicianId || null,
           problemDescription: formData.problemDescription,
-          repairNotes: formData.repairNotes,
+          repairNotes: composedRepairNotes,
           estimatedCompletion: formData.estimatedCompletionDate || null,
           completedDate: formData.completedDate || null,
-          repairCost: formData.repairCost ? Number(formData.repairCost) : null,
-          totalCost: formData.repairCost ? Number(formData.repairCost) : null,
+          repairCost: normalizedRepairCost,
+          partsCost: normalizedPartsCost,
+          distributorCost: normalizedDistributorCost,
+          internalServiceCost: normalizedInternalServiceCost,
+          totalCost: normalizedRepairCost,
         }),
       })
 
@@ -189,6 +280,15 @@ export default function RepairDetailPage({ params }: PageProps) {
       case 'low': return 'Dü_ük'
       default: return priority
     }
+  }
+
+  const toggleOperation = (op: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      operations: prev.operations.includes(op)
+        ? prev.operations.filter((item) => item !== op)
+        : [...prev.operations, op],
+    }))
   }
 
   const formatDate = (date: Date) => {
@@ -471,12 +571,70 @@ export default function RepairDetailPage({ params }: PageProps) {
                   </div>
                 </div>
                 <div className="space-y-2 max-w-xs">
-                  <Label>Onarim Maliyeti (TL)</Label>
+                  <Label>Musteriden Talep Edilen Fiyat (TL)</Label>
                   <Input
                     type="number"
                     value={formData.repairCost}
                     onChange={(e) => setFormData((prev) => ({ ...prev, repairCost: e.target.value }))}
                   />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Parca Maliyeti (TL)</Label>
+                    <Input
+                      type="number"
+                      value={formData.partsCost}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, partsCost: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Distributor Maliyeti (TL)</Label>
+                    <Input
+                      type="number"
+                      value={formData.distributorCost}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, distributorCost: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Musteri Onayi</Label>
+                  <Select
+                    value={formData.customerApprovalStatus}
+                    onValueChange={(value: 'pending' | 'approved' | 'rejected') =>
+                      setFormData((prev) => ({ ...prev, customerApprovalStatus: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Onay Bekliyor</SelectItem>
+                      <SelectItem value="approved">Onaylandi</SelectItem>
+                      <SelectItem value="rejected">Reddedildi</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Onay Notu</Label>
+                  <Textarea
+                    value={formData.approvalNote}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, approvalNote: e.target.value }))}
+                    rows={2}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Yapilacak / Yapilan Islemler</Label>
+                  <div className="grid md:grid-cols-2 gap-2">
+                    {REPAIR_OPERATIONS.map((op) => (
+                      <label key={op} className="flex items-center gap-2 text-sm border rounded p-2">
+                        <Checkbox checked={formData.operations.includes(op)} onCheckedChange={() => toggleOperation(op)} />
+                        <span>{op}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -517,6 +675,28 @@ export default function RepairDetailPage({ params }: PageProps) {
                 ) : (
                   <p className="whitespace-pre-wrap">{repair.finalReport}</p>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {!editMode && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Ticket Bilgileri</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="text-sm">
+                  Musteri Onayi: {formData.customerApprovalStatus === 'approved' ? 'Onaylandi' : formData.customerApprovalStatus === 'rejected' ? 'Reddedildi' : 'Onay Bekliyor'}
+                </div>
+                {formData.approvalNote ? (
+                  <div className="text-sm">Onay Notu: {formData.approvalNote}</div>
+                ) : null}
+                <div className="text-sm">Parca Maliyeti: {formData.partsCost || '0'} TL</div>
+                <div className="text-sm">Distributor Maliyeti: {formData.distributorCost || '0'} TL</div>
+                <div className="text-sm font-medium">Musteriden Talep Edilen: {formData.repairCost || '0'} TL</div>
+                <div className="text-sm">
+                  Islemler: {formData.operations.length > 0 ? formData.operations.join(', ') : '-'}
+                </div>
               </CardContent>
             </Card>
           )}

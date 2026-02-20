@@ -1,5 +1,15 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
+
+function isClosedRepairStatus(status: string | null | undefined) {
+  return status === 'COMPLETED' || status === 'UNREPAIRABLE'
+}
+
+function extractCargoIdFromRepairNotes(notes?: string | null) {
+  if (!notes) return null
+  const match = notes.match(/\[CARGO:([^\]]+)\]/)
+  return match ? match[1] : null
+}
 
 // GET single repair by ID
 export async function GET(
@@ -63,6 +73,28 @@ export async function PATCH(
       },
     })
 
+    const cargoId = extractCargoIdFromRepairNotes(repair.repairNotes)
+    if (cargoId) {
+      const linkedRepairs = await prisma.deviceRepair.findMany({
+        where: {
+          repairNotes: { contains: `[CARGO:${cargoId}]` },
+        },
+        select: {
+          status: true,
+        },
+      })
+
+      const anyOpen = linkedRepairs.some((item) => !isClosedRepairStatus(item.status))
+      const anyClosed = linkedRepairs.some((item) => isClosedRepairStatus(item.status))
+
+      await prisma.cargoTracking.update({
+        where: { id: cargoId },
+        data: {
+          recordStatus: anyOpen ? 'ON_HOLD' : (anyClosed ? 'OPEN' : undefined),
+        },
+      }).catch(() => undefined)
+    }
+
     return NextResponse.json(repair)
   } catch (error) {
     console.error('Error updating repair:', error)
@@ -92,4 +124,3 @@ export async function DELETE(
     )
   }
 }
-

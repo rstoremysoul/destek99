@@ -120,7 +120,7 @@ export interface CargoTracking {
   trackingNumber: string
   type: 'incoming' | 'outgoing' | 'on_site_service' | 'installation_team'
   status: 'in_transit' | 'delivered' | 'returned' | 'lost' | 'damaged'
-  recordStatus?: 'open' | 'on_hold' | 'closed' | 'device_repair'
+  recordStatus?: 'open' | 'on_hold' | 'closed' | 'device_repair' | 'ready_to_ship'
   sender: string
   receiver: string
   cargoCompany: string
@@ -142,10 +142,13 @@ export interface CargoRepairTicket {
   receiver: string
   cargoCompany: string
   currentLocationName?: string | null
-  recordStatus?: 'open' | 'on_hold' | 'closed' | 'device_repair'
+  recordStatus?: 'open' | 'on_hold' | 'closed' | 'device_repair' | 'ready_to_ship'
   devices: CargoDevice[]
   technicianName?: string
   operations: string[]
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
+  approvalAt?: string
+  approvalNote?: string
   spareParts?: Array<{
     name: string
     quantity: number
@@ -153,7 +156,10 @@ export interface CargoRepairTicket {
   }>
   laborCost?: number
   partsCost?: number
+  distributorCost?: number
+  internalServiceCost?: number
   totalCost?: number
+  shipmentStatus?: 'pending' | 'ready_to_ship' | 'shipped'
   imageUrl?: string
   repairNote?: string
   repairHistory: Array<{
@@ -162,8 +168,12 @@ export interface CargoRepairTicket {
     technicianName?: string
     operations?: string[]
     note?: string
+    approvalStatus?: 'pending' | 'approved' | 'rejected'
+    approvalNote?: string
     laborCost?: number
     partsCost?: number
+    distributorCost?: number
+    internalServiceCost?: number
     totalCost?: number
   }>
   createdAt: Date
@@ -183,6 +193,12 @@ export interface CargoDevice {
   quantity: number
   condition: 'new' | 'used' | 'refurbished' | 'damaged'
   purpose: 'installation' | 'replacement' | 'repair' | 'return'
+  repairTicket?: {
+    id: string
+    repairNumber: string
+    status: 'open' | 'closed'
+    state: string
+  }
 }
 
 export interface DeviceRepair {
@@ -209,11 +225,18 @@ export interface DeviceRepair {
   estimatedCompletion?: Date | string
   actualCompletionDate?: Date
   repairCost?: number
+  partsCost?: number
+  totalCost?: number
+  distributorCost?: number
+  internalServiceCost?: number
   isWarranty: boolean
   warrantyEndDate?: Date
   partsUsed: RepairPart[]
   repairNotes: RepairNote[]
   finalReport?: string
+  operations?: string[]
+  customerApprovalStatus?: 'pending' | 'approved' | 'rejected'
+  approvalNote?: string
   createdAt: Date
   updatedAt: Date
 }

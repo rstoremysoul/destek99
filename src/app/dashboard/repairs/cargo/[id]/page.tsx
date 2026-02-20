@@ -32,13 +32,19 @@ interface CargoRepairDetail {
     technicianId?: string
     technicianName?: string
     operations?: string[]
+    approvalStatus?: 'pending' | 'approved' | 'rejected'
+    approvalAt?: string
+    approvalNote?: string
+    shipmentStatus?: 'pending' | 'ready_to_ship' | 'shipped'
     spareParts?: Array<{ name: string; quantity: number; unitCost: number }>
     laborCost?: number
     partsCost?: number
+    distributorCost?: number
+    internalServiceCost?: number
     totalCost?: number
     imageUrl?: string
     note?: string
-    history?: Array<{ at: string; action: string; technicianName?: string; operations?: string[]; note?: string; laborCost?: number; partsCost?: number; totalCost?: number }>
+    history?: Array<{ at: string; action: string; technicianName?: string; operations?: string[]; note?: string; approvalStatus?: 'pending' | 'approved' | 'rejected'; approvalNote?: string; laborCost?: number; partsCost?: number; distributorCost?: number; internalServiceCost?: number; totalCost?: number }>
   } | null
 }
 
@@ -66,7 +72,11 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
   const [imageUrl, setImageUrl] = useState('')
   const [repairNote, setRepairNote] = useState('')
   const [spareParts, setSpareParts] = useState<SparePartFormItem[]>([])
+  const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected'>('pending')
+  const [approvalNote, setApprovalNote] = useState('')
   const [laborCost, setLaborCost] = useState<number>(0)
+  const [distributorCost, setDistributorCost] = useState<number>(0)
+  const [internalServiceCost, setInternalServiceCost] = useState<number>(0)
 
   const load = useCallback(async () => {
     try {
@@ -85,7 +95,11 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
       setImageUrl(json?.repair?.imageUrl || '')
       setRepairNote(json?.repair?.note || '')
       setSpareParts(Array.isArray(json?.repair?.spareParts) ? json.repair.spareParts : [])
+      setApprovalStatus(json?.repair?.approvalStatus || 'pending')
+      setApprovalNote(json?.repair?.approvalNote || '')
       setLaborCost(typeof json?.repair?.laborCost === 'number' ? json.repair.laborCost : 0)
+      setDistributorCost(typeof json?.repair?.distributorCost === 'number' ? json.repair.distributorCost : 0)
+      setInternalServiceCost(typeof json?.repair?.internalServiceCost === 'number' ? json.repair.internalServiceCost : 0)
     } catch (error) {
       console.error(error)
       toast.error('Detay yuklenemedi')
@@ -126,10 +140,14 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
   }
 
   const partsCost = spareParts.reduce((sum, part) => sum + (Number(part.quantity) || 0) * (Number(part.unitCost) || 0), 0)
-  const totalCost = partsCost + (Number(laborCost) || 0)
+  const totalCost = partsCost + (Number(laborCost) || 0) + (Number(distributorCost) || 0) + (Number(internalServiceCost) || 0)
 
   const save = async (complete = false) => {
     try {
+      if (complete && approvalStatus === 'rejected' && !approvalNote.trim()) {
+        toast.error('Onay reddedildiyse aciklama notu zorunludur')
+        return
+      }
       setSaving(true)
       const res = await fetch(`/api/cargo-repairs/${params.id}`, {
         method: 'PATCH',
@@ -141,8 +159,12 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
           imageUrl,
           repairNote,
           spareParts,
+          approvalStatus,
+          approvalNote,
           laborCost,
           partsCost,
+          distributorCost,
+          internalServiceCost,
           totalCost,
           action: complete ? 'complete' : 'save',
         }),
@@ -239,6 +261,33 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
           </div>
 
           <div className="space-y-2">
+            <Label>Musteri Onay Durumu</Label>
+            <Select
+              value={approvalStatus}
+              onValueChange={(value: 'pending' | 'approved' | 'rejected') => setApprovalStatus(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Onay durumu secin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Onay Bekliyor</SelectItem>
+                <SelectItem value="approved">Onaylandi</SelectItem>
+                <SelectItem value="rejected">Reddedildi (Tamirsiz Iade)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Onay Notu</Label>
+            <Textarea
+              value={approvalNote}
+              onChange={(e) => setApprovalNote(e.target.value)}
+              rows={2}
+              placeholder={approvalStatus === 'rejected' ? 'Reddetme sebebini yazin (zorunlu)' : 'Musteri gorusmesi/notu'}
+            />
+          </div>
+
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Yedek Parcalar</Label>
               <Button type="button" variant="outline" size="sm" onClick={addSparePart}>
@@ -281,7 +330,7 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-3">
+          <div className="grid md:grid-cols-5 gap-3">
             <div className="space-y-2">
               <Label>Iscilik Maliyeti</Label>
               <Input
@@ -295,6 +344,26 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
             <div className="space-y-2">
               <Label>Parca Maliyeti</Label>
               <Input type="number" value={partsCost.toFixed(2)} readOnly />
+            </div>
+            <div className="space-y-2">
+              <Label>Distributor Maliyeti</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={distributorCost}
+                onChange={(e) => setDistributorCost(Number(e.target.value) || 0)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Ic Servis Maliyeti</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={internalServiceCost}
+                onChange={(e) => setInternalServiceCost(Number(e.target.value) || 0)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Toplam Maliyet</Label>
@@ -327,11 +396,23 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
               {item.technicianName && <div className="text-sm">Teknisyen: {item.technicianName}</div>}
               {item.operations && item.operations.length > 0 && <div className="text-sm">Islemler: {item.operations.join(', ')}</div>}
               {item.note && <div className="text-sm">Not: {item.note}</div>}
+              {item.approvalStatus && (
+                <div className="text-sm">
+                  Onay: {item.approvalStatus === 'approved' ? 'Onaylandi' : item.approvalStatus === 'rejected' ? 'Reddedildi' : 'Onay Bekliyor'}
+                </div>
+              )}
+              {item.approvalNote && <div className="text-sm">Onay Notu: {item.approvalNote}</div>}
               {typeof item.laborCost === 'number' && (
                 <div className="text-sm">Iscilik: {item.laborCost.toFixed(2)} TL</div>
               )}
               {typeof item.partsCost === 'number' && (
                 <div className="text-sm">Parca: {item.partsCost.toFixed(2)} TL</div>
+              )}
+              {typeof item.distributorCost === 'number' && (
+                <div className="text-sm">Distributor: {item.distributorCost.toFixed(2)} TL</div>
+              )}
+              {typeof item.internalServiceCost === 'number' && (
+                <div className="text-sm">Ic Servis: {item.internalServiceCost.toFixed(2)} TL</div>
               )}
               {typeof item.totalCost === 'number' && (
                 <div className="text-sm font-medium">Toplam: {item.totalCost.toFixed(2)} TL</div>

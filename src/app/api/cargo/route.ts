@@ -14,7 +14,12 @@ function normalizeRecordStatus(status: string | null | undefined, notes?: string
   const raw = typeof status === 'string' ? status.toLowerCase() : 'open'
   const { meta } = parseCargoRepairMeta(notes)
   if (meta?.active) return 'device_repair'
+  if (meta?.status === 'completed' && meta?.shipmentStatus === 'ready_to_ship') return 'ready_to_ship'
   return raw
+}
+
+function isClosedRepairStatus(status: string) {
+  return status === 'COMPLETED' || status === 'UNREPAIRABLE'
 }
 
 async function getHeadquartersLocation() {
@@ -101,9 +106,60 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const repairRows = await prisma.deviceRepair.findMany({
+        where: {
+          repairNotes: { contains: `[CARGO:${cargo.id}]` },
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          repairNumber: true,
+          status: true,
+          repairNotes: true,
+          updatedAt: true,
+        },
+      })
+
+      const deviceRepairMap = new Map<string, { id: string; repairNumber: string; status: 'open' | 'closed'; state: string; updatedAt: Date }>()
+      for (const row of repairRows) {
+        const match = row.repairNotes?.match(/\[CARGO_DEVICE:([^\]]+)\]/)
+        if (!match) continue
+        const cargoDeviceId = match[1]
+        const status = isClosedRepairStatus(row.status) ? 'closed' : 'open'
+        const existing = deviceRepairMap.get(cargoDeviceId)
+        if (existing && existing.updatedAt > row.updatedAt) continue
+        deviceRepairMap.set(cargoDeviceId, {
+          id: row.id,
+          repairNumber: row.repairNumber,
+          status,
+          state: String(row.status || '').toLowerCase(),
+          updatedAt: row.updatedAt,
+        })
+      }
+
+      const anyOpenRepair = Array.from(deviceRepairMap.values()).some((item) => item.status === 'open')
+      const anyClosedRepair = Array.from(deviceRepairMap.values()).some((item) => item.status === 'closed')
+      const normalized = anyOpenRepair
+        ? 'device_repair'
+        : (anyClosedRepair ? 'ready_to_ship' : normalizeRecordStatus(cargo.recordStatus, cargo.notes))
+
       return {
         ...cargo,
-        recordStatus: normalizeRecordStatus(cargo.recordStatus, cargo.notes),
+        recordStatus: normalized,
+        devices: cargo.devices.map((device: any) => {
+          const ticket = deviceRepairMap.get(device.id)
+          return {
+            ...device,
+            repairTicket: ticket
+              ? {
+                  id: ticket.id,
+                  repairNumber: ticket.repairNumber,
+                  status: ticket.status,
+                  state: ticket.state,
+                }
+              : undefined,
+          }
+        }),
         currentLocationName: locationName,
       };
     }));

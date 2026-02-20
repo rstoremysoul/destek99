@@ -218,3 +218,149 @@ Neden:
 - Seri no ile gecmisi her zaman gor.
 
 Bu dokuman, ekipte karar alirken "tek dogru referans" olarak kullanilmalidir ve yeni kural eklendikce ayni dosyada guncellenmelidir.
+
+## 11) Is Akislarini Iki Eksende Takip Etme Modeli
+
+Bu projede tek bir "durum" yetmiyor. Operasyonu duzgun takip etmek icin iki eksen birden takip edilmelidir.
+
+### 11.1 Eksen A: Kargo Emanet / Fiziksel Konum Durumu
+
+- `MERKEZDE_BEKLIYOR`: cihaz fiziksel olarak bizde (merkez depo).
+- `SEVKTE`: distribitore veya musteriye sevk edildi.
+- `MUSTERIDE_TESLIM`: musteriye teslim edildi (kapanisa yakin durum).
+
+Mevcut sistemde karsiligi:
+- Gelen kargo otomatik merkez depo (`INCOMING -> HEADQUARTERS`).
+- Sevk islemi `POST /api/cargo/dispatch`.
+- Kargo listesinde `currentLocationName` gorunumu.
+
+### 11.2 Eksen B: Teknik/Ticari Tamir Durumu
+
+- `TAMIR_BEKLIYOR`: kayit tamire acildi, teknisyen islemi bekliyor.
+- `TAMIRDE`: teknisyen islemde, parca ve maliyet olusabilir.
+- `MUSTERI_ONAY_BEKLIYOR`: masraf cikti, musteri onayi bekleniyor.
+- `ONAY_ALINDI_TAMIR_TAMAMLANDI`: tamir bitti.
+- `TAMIR_EDILEMEDI` veya `IPTAL`.
+
+Mevcut sistemde karsiligi:
+- Kargoda `recordStatus=device_repair` + `[[CARGO_REPAIR_META]]`.
+- Tamir ticket detayinda teknisyen, operasyon, parca ve maliyet alanlari.
+- Tamir tamamlaninca `DeviceRepair` kaydi olusuyor ve arsive dusuyor.
+
+Neden iki eksen:
+- Cihaz hem "fiziksel olarak bizde bekliyor" olabilir hem de "tamirde/onayda" olabilir.
+- Tek durum alani bu iki gercegi ayni anda tasiyamaz.
+
+## 12) Senaryo Bazli Kurgulama (Mevcut Yapiya Gore)
+
+### 12.1 Musteriden Gelen Cihaz -> Tamir -> Onay -> Geri Gonderim
+
+1. Kargo kaydi `incoming` acilir (merkez depo otomatik).
+2. Gerekirse kargo kaydi `device_repair` durumuna cekilir.
+3. Tamir ticketinda:
+- teknisyen secilir
+- yapilan islemler girilir
+- kullanilan/degisen parcalar girilir
+- iscilik + parca maliyeti ile toplam masraf yazilir
+4. Masraf varsa "musteri onay bekliyor" olarak operasyonel takip yapilir.
+5. Onay alindiktan sonra tamir tamamlanir.
+6. Kargo musteriye cikarken sevk islemi ile fiziksel durum kapanisa goturulur.
+
+Takipte gorulecekler:
+- Merkezde bekleyen cihazlar (kargo/lokasyon tarafi).
+- Tamirde ve onay bekleyen cihazlar (tamir metasi + tamir listesi tarafi).
+
+### 12.2 Yerinde Servisin Getirdigi Cihaz -> Ayni Akis
+
+Bu senaryo teknik olarak 12.1 ile ayni, sadece giris kaynagi farkli.
+
+1. Yerinde servis ekipten gelen cihaz da `incoming` kargo olarak acilir.
+2. Tamir / maliyet / musteri onay / sevk adimlari aynen uygulanir.
+
+Neden:
+- Tum fiziksel girisleri tek kapidan (kargo) gecirip daginik takipten kacmak.
+
+### 12.3 Firmadan Gelen Konsinye Urun -> Test -> Iade
+
+1. Kargo `incoming` olarak acilir.
+2. Not alaninda veya cihaz amacinda "konsinye/test" etiketi belirtilir.
+3. Test sureci tamamlaninca `outgoing` kargo ile geri gonderilir.
+4. Bu akis tamir akisindan bagimsiz olabilir (tamire girmeden kapanabilir).
+
+Not:
+- Konsinye akisi icin ayri bir "is tipi" filtresi eklemek raporlamayi netlestirir.
+
+### 12.4 Musteri Cihazi -> Sirket Testi -> Distributor -> Geri Donus -> Onay -> Musteri
+
+1. Musteri cihazi `incoming` olarak girer ve merkezde bekler.
+2. Sirket ici test/teshis yapilir.
+3. Distributor icin sevk edilir (`dispatch` + hedef lokasyon distributor).
+4. Distributor donusu tekrar `incoming` kargo ile sisteme girer.
+5. Distributor masraf cikardiysa maliyet tamir kaydina yazilir.
+6. Musteri onayi alinir.
+7. Onay sonrasi musteriye `outgoing` kargo ile sevk edilir.
+
+Kritik fayda:
+- Ayni seri no icin tum dongu `devices/lookup` ile tek timeline'da gorunur.
+
+## 13) Bu 4 Senaryoya Gore Gelistirme Plani
+
+1. Kisa vade (hemen):
+- Liste ekranlarinda "Merkezde bekleyenler", "Tamirdekiler", "Onay bekleyenler" filtreleri netlestir.
+- Tamir ticketina "musteri onay durumu" (bekliyor/onaylandi/reddedildi) alani ekle.
+
+2. Orta vade:
+- `cargo_repair_meta` icinde onay durumu + onay tarihi + onay notu tut.
+- `repairs` listesinde bu onay alanlarini rozet/kolon olarak goster.
+
+3. Uzun vade:
+- Kargo tamir metasi not icinden cikarilip ayri tabloya tasinsin.
+- Durum gecisleri state-machine kurallariyla zorunlu hale getirilsin.
+
+## 14) Netlesen Operasyon Kararlari
+
+1. Musteri onay durumlari:
+- `onay_bekliyor`
+- `onaylandi`
+- `reddedildi`
+
+2. `reddedildi` sonucu:
+- Cihaz tamirsiz iade edilir.
+
+3. Konsinye takibi:
+- Ayrica yeni tip acilmadan `not + filtre` ile takip edilir.
+
+4. Maliyet kirilimi:
+- Distributor maliyeti ve ic servis maliyeti ayri alanlarda tutulur.
+
+5. Tamir sonrasi akis:
+- Tamir tamamlaninca kayit otomatik olarak `gonderime_hazir` asamasina gecer.
+
+## 15) Kararlara Gore Uygulama Plani (Teknik)
+
+1. Veri katmani:
+- `cargo_repair_meta` icerisine `approvalStatus`, `approvalAt`, `approvalNote` alanlari eklenir.
+- `DeviceRepair` icin ek maliyet alanlari acilir:
+- `distributorCost`
+- `internalServiceCost`
+
+2. API katmani:
+- `PATCH /api/cargo-repairs/:id` onay durumu alanlarini kabul edecek sekilde guncellenir.
+- `action=complete` sirasinda:
+- onay `reddedildi` ise tamir kaydi "tamirsiz iade" notuyla kapanir.
+- onay `onaylandi` ise tamir normal tamamlanir.
+- tamamlanan kayit icin kargo tarafinda otomatik `gonderime_hazir` bilgisi islenir.
+
+3. UI katmani:
+- Kargo tamir ticket detayina "Musteri Onay Durumu" alani eklenir.
+- Onay reddedildi ise sebep/not girisi zorunlu hale getirilir.
+- Tamir listesinde onay durumu rozeti gosterilir.
+- Maliyet ekraninda distributor/ic servis ayri alanlar olarak girilir.
+
+4. Liste ve filtreler:
+- Kargo ekranina "gonderime hazir" filtresi eklenir.
+- Tamir ekranina `onay_bekliyor/onaylandi/reddedildi` filtreleri eklenir.
+- Konsinye kayitlari not etiketinden filtrelenir.
+
+5. Otomasyon kurali:
+- Tamir `complete` oldugunda kayit manuel ara adim istemeden gonderime hazir olur.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { appendCargoRepairHistory, parseCargoRepairMeta, upsertCargoRepairMeta } from '@/lib/cargo-repair'
 
 function generateEquivalentDeviceNumber() {
   return `AUTO-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 90 + 10)}`
@@ -136,6 +137,25 @@ export async function POST(request: NextRequest) {
 
       return { dispatchedIds, skippedSerials }
     })
+
+    const parsed = parseCargoRepairMeta(cargo.notes)
+    if (parsed.meta) {
+      const shippedNotes = appendCargoRepairHistory(
+        upsertCargoRepairMeta(cargo.notes, {
+          shipmentStatus: 'shipped',
+        }),
+        {
+          at: new Date().toISOString(),
+          action: `Kargo sevk edildi (${targetLocation.name})`,
+          note: notes || '',
+        }
+      )
+
+      await prisma.cargoTracking.update({
+        where: { id: cargo.id },
+        data: { notes: shippedNotes },
+      })
+    }
 
     if (results.dispatchedIds.length === 0) {
       return NextResponse.json(

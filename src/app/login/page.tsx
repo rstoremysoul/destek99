@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -14,7 +13,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,7 +29,6 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (res.ok) {
-        login(data.user)
         router.push('/dashboard')
       } else {
         setError(data.message || 'Giriş başarısız')

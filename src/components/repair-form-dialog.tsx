@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { DeviceRepair, Technician } from '@/types'
 
 interface RepairFormDialogProps {
@@ -23,12 +24,42 @@ type RepairFormDraft = {
   companyName: string
   customerName: string
   problemDescription: string
+  status: 'received' | 'diagnosing' | 'waiting_parts' | 'repairing' | 'testing' | 'completed' | 'unrepairable'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   isWarranty: boolean
   warrantyEndDate: string
   estimatedCompletionDate: string
   repairCost: string
+  partsCost: string
+  distributorCost: string
+  customerApprovalStatus: 'pending' | 'approved' | 'rejected'
+  approvalNote: string
+  operations: string[]
+  repairNotes: string
   technicianId: string
+}
+
+const REPAIR_OPERATIONS = [
+  'Dokunmatik Degisimi',
+  'Yazici Kafasi Degisimi',
+  'Anakart Onarimi',
+  'Anakart Degisimi',
+  'Soket Onarimi',
+  'Yazilim / Image',
+]
+
+const REPAIR_META_TAG = '[[REPAIR_TICKET_META]]'
+
+function buildRepairNotesWithMeta(cleanNotes: string, meta: {
+  operations: string[]
+  customerApprovalStatus: 'pending' | 'approved' | 'rejected'
+  approvalNote: string
+}) {
+  const parts = [
+    String(cleanNotes || '').trim(),
+    `${REPAIR_META_TAG}${JSON.stringify(meta)}`,
+  ].filter(Boolean)
+  return parts.join('\n')
 }
 
 export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDialogProps) {
@@ -40,11 +71,18 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
     companyName: '',
     customerName: '',
     problemDescription: '',
+    status: 'received',
     priority: 'medium',
     isWarranty: false,
     warrantyEndDate: '',
     estimatedCompletionDate: '',
     repairCost: '',
+    partsCost: '',
+    distributorCost: '',
+    customerApprovalStatus: 'pending',
+    approvalNote: '',
+    operations: [],
+    repairNotes: '',
     technicianId: '',
   })
 
@@ -71,6 +109,16 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
     // Tamir numarasını otomatik oluştur
     const repairNumber = `TR-${Date.now().toString().slice(-6)}`
 
+    const normalizedRepairCost = formData.repairCost ? Number(formData.repairCost) : 0
+    const normalizedPartsCost = formData.partsCost ? Number(formData.partsCost) : 0
+    const normalizedDistributorCost = formData.distributorCost ? Number(formData.distributorCost) : 0
+    const normalizedInternalServiceCost = Math.max(0, normalizedRepairCost - normalizedPartsCost - normalizedDistributorCost)
+    const composedRepairNotes = buildRepairNotesWithMeta(formData.repairNotes, {
+      operations: formData.operations,
+      customerApprovalStatus: formData.customerApprovalStatus,
+      approvalNote: formData.approvalNote,
+    })
+
     const newRepair: Partial<DeviceRepair> = {
       repairNumber,
       deviceName: formData.deviceName,
@@ -80,15 +128,20 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
       customerName: formData.customerName,
       customerPhone: '0000000000', // Geçici değer
       problemDescription: formData.problemDescription,
+      status: formData.status,
       priority: formData.priority,
       isWarranty: formData.isWarranty,
-      status: 'received',
       receivedDate: new Date(),
       estimatedCompletionDate: formData.estimatedCompletionDate ? new Date(formData.estimatedCompletionDate) : undefined,
-      repairCost: formData.repairCost ? parseFloat(formData.repairCost) : undefined,
+      repairCost: normalizedRepairCost,
+      partsCost: normalizedPartsCost,
+      distributorCost: normalizedDistributorCost,
+      internalServiceCost: normalizedInternalServiceCost,
+      totalCost: normalizedRepairCost,
       brand: formData.brand || undefined,
       assignedTechnician: formData.technicianId || undefined,
     }
+    ;(newRepair as any).repairNotes = composedRepairNotes
 
     onSubmit(newRepair)
 
@@ -100,16 +153,32 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
       companyName: '',
       customerName: '',
       problemDescription: '',
+      status: 'received',
       priority: 'medium',
       isWarranty: false,
       warrantyEndDate: '',
       estimatedCompletionDate: '',
       repairCost: '',
+      partsCost: '',
+      distributorCost: '',
+      customerApprovalStatus: 'pending',
+      approvalNote: '',
+      operations: [],
+      repairNotes: '',
       brand: '',
       technicianId: '',
     })
 
     onOpenChange(false)
+  }
+
+  const toggleOperation = (operation: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      operations: prev.operations.includes(operation)
+        ? prev.operations.filter((item) => item !== operation)
+        : [...prev.operations, operation],
+    }))
   }
 
   return (
@@ -230,6 +299,31 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="status" className="text-sm font-medium">
+                    Durum *
+                  </Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value: 'received' | 'diagnosing' | 'waiting_parts' | 'repairing' | 'testing' | 'completed' | 'unrepairable') =>
+                      setFormData({ ...formData, status: value })
+                    }
+                  >
+                    <SelectTrigger className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="received">Alindi</SelectItem>
+                      <SelectItem value="diagnosing">Teshis Ediliyor</SelectItem>
+                      <SelectItem value="waiting_parts">Parca Bekleniyor</SelectItem>
+                      <SelectItem value="repairing">Tamir Ediliyor</SelectItem>
+                      <SelectItem value="testing">Test Ediliyor</SelectItem>
+                      <SelectItem value="completed">Tamamlandi</SelectItem>
+                      <SelectItem value="unrepairable">Tamir Edilemez</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="priority" className="text-sm font-medium">
                     Öncelik *
                   </Label>
@@ -284,6 +378,21 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Yapilacak / Yapilan Islemler</Label>
+                <div className="grid md:grid-cols-2 gap-2">
+                  {REPAIR_OPERATIONS.map((operation) => (
+                    <label key={operation} className="flex items-center gap-2 text-sm border rounded p-2">
+                      <Checkbox
+                        checked={formData.operations.includes(operation)}
+                        onCheckedChange={() => toggleOperation(operation)}
+                      />
+                      <span>{operation}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Garanti ve Maliyet */}
@@ -319,21 +428,96 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
               )}
 
               {!formData.isWarranty && (
-                <div className="space-y-2">
-                  <Label htmlFor="repairCost" className="text-sm font-medium">
-                    Tahmini Tamir Maliyeti (â‚º)
-                  </Label>
-                  <Input
-                    id="repairCost"
-                    type="number"
-                    step="0.01"
-                    value={formData.repairCost}
-                    onChange={(e) => setFormData({ ...formData, repairCost: e.target.value })}
-                    placeholder="0.00"
-                    className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="partsCost" className="text-sm font-medium">
+                      Parca Maliyeti (TL)
+                    </Label>
+                    <Input
+                      id="partsCost"
+                      type="number"
+                      step="0.01"
+                      value={formData.partsCost}
+                      onChange={(e) => setFormData({ ...formData, partsCost: e.target.value })}
+                      placeholder="0.00"
+                      className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="distributorCost" className="text-sm font-medium">
+                      Distributor Maliyeti (TL)
+                    </Label>
+                    <Input
+                      id="distributorCost"
+                      type="number"
+                      step="0.01"
+                      value={formData.distributorCost}
+                      onChange={(e) => setFormData({ ...formData, distributorCost: e.target.value })}
+                      placeholder="0.00"
+                      className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="repairCost" className="text-sm font-medium">
+                      Musteriden Talep Edilen Fiyat (TL)
+                    </Label>
+                    <Input
+                      id="repairCost"
+                      type="number"
+                      step="0.01"
+                      value={formData.repairCost}
+                      onChange={(e) => setFormData({ ...formData, repairCost: e.target.value })}
+                      placeholder="0.00"
+                      className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
+                    />
+                  </div>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Musteri Onayi</Label>
+                <Select
+                  value={formData.customerApprovalStatus}
+                  onValueChange={(value: 'pending' | 'approved' | 'rejected') =>
+                    setFormData({ ...formData, customerApprovalStatus: value })
+                  }
+                >
+                  <SelectTrigger className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Onay Bekliyor</SelectItem>
+                    <SelectItem value="approved">Onaylandi</SelectItem>
+                    <SelectItem value="rejected">Reddedildi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="approvalNote" className="text-sm font-medium">
+                  Onay Notu
+                </Label>
+                <Textarea
+                  id="approvalNote"
+                  value={formData.approvalNote}
+                  onChange={(e) => setFormData({ ...formData, approvalNote: e.target.value })}
+                  placeholder="Musteri ile gorusme/teklif notu"
+                  className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 min-h-[80px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="repairNotes" className="text-sm font-medium">
+                  Tamir Notlari
+                </Label>
+                <Textarea
+                  id="repairNotes"
+                  value={formData.repairNotes}
+                  onChange={(e) => setFormData({ ...formData, repairNotes: e.target.value })}
+                  placeholder="Teknik notlar..."
+                  className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 min-h-[100px]"
+                />
+              </div>
             </div>
           </div>
 

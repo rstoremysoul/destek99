@@ -21,6 +21,7 @@ import {
   ClipboardList
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
 
 interface PageProps {
   params: { id: string }
@@ -30,6 +31,7 @@ export default function CargoDetailPage({ params }: PageProps) {
   const [cargo, setCargo] = useState<CargoTracking | null>(null)
   const [repairHistory, setRepairHistory] = useState<Array<{ at: string; action: string; technicianName?: string; operations?: string[]; note?: string }>>([])
   const [loading, setLoading] = useState(true)
+  const [repairTicketOpen, setRepairTicketOpen] = useState(false)
   const router = useRouter()
 
   const fetchCargo = useCallback(async () => {
@@ -44,7 +46,7 @@ export default function CargoDetailPage({ params }: PageProps) {
           trackingNumber: data.trackingNumber,
           type: data.type.toLowerCase(),
           status: data.status.toLowerCase(),
-          recordStatus: (data.recordStatus ? String(data.recordStatus).toLowerCase() : 'open') as 'open' | 'on_hold' | 'closed' | 'device_repair',
+          recordStatus: (data.recordStatus ? String(data.recordStatus).toLowerCase() : 'open') as 'open' | 'on_hold' | 'closed' | 'device_repair' | 'ready_to_ship',
           sender: data.sender,
           receiver: data.receiver,
           cargoCompany: data.cargoCompany,
@@ -58,6 +60,14 @@ export default function CargoDetailPage({ params }: PageProps) {
             deviceName: d.deviceName,
             model: d.model,
             serialNumber: d.serialNumber,
+            repairTicket: d.repairTicket
+              ? {
+                  id: d.repairTicket.id,
+                  repairNumber: d.repairTicket.repairNumber,
+                  status: d.repairTicket.status,
+                  state: d.repairTicket.state,
+                }
+              : undefined,
             deviceSource: d.deviceSource || 'other',
             equivalentDeviceId: d.equivalentDeviceId || undefined,
             customerName: d.customerName || undefined,
@@ -107,6 +117,10 @@ export default function CargoDetailPage({ params }: PageProps) {
 
   const handleRecordStatusChange = async (value: 'open' | 'on_hold' | 'closed' | 'device_repair') => {
     if (!cargo) return
+    if (value === 'device_repair') {
+      setRepairTicketOpen(true)
+      return
+    }
 
     try {
       const response = await fetch(`/api/cargo/${cargo.id}`, {
@@ -170,6 +184,7 @@ export default function CargoDetailPage({ params }: PageProps) {
       case 'on_hold': return 'Beklemede'
       case 'closed': return 'Kapalı'
       case 'device_repair': return 'Cihaz Tamiri'
+      case 'ready_to_ship': return 'Gonderime Hazir'
       default: return 'Açık'
     }
   }
@@ -228,7 +243,7 @@ export default function CargoDetailPage({ params }: PageProps) {
             <Badge variant={getStatusColor(cargo.status)} className="text-sm py-1">
               {getStatusText(cargo.status)}
             </Badge>
-            <Badge
+              <Badge
               variant={cargo.recordStatus === 'closed' ? 'secondary' : cargo.recordStatus === 'on_hold' ? 'outline' : cargo.recordStatus === 'device_repair' ? 'destructive' : 'default'}
               className="text-sm py-1"
             >
@@ -237,8 +252,8 @@ export default function CargoDetailPage({ params }: PageProps) {
             <Badge variant="outline" className="text-sm py-1">
               {cargo.type === 'incoming' ? 'Gelen' : 'Giden'}
             </Badge>
-            <Select
-              value={cargo.recordStatus || 'open'}
+                    <Select
+              value={cargo.recordStatus === 'ready_to_ship' ? 'open' : (cargo.recordStatus || 'open')}
               onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair') => handleRecordStatusChange(value)}
             >
               <SelectTrigger className="h-8 w-[140px]">
@@ -252,8 +267,8 @@ export default function CargoDetailPage({ params }: PageProps) {
               </SelectContent>
             </Select>
             {cargo.recordStatus === 'device_repair' && (
-              <Button variant="secondary" size="sm" onClick={() => router.push(`/dashboard/repairs/cargo/${cargo.id}`)}>
-                Tamiri Yönet
+              <Button variant="secondary" size="sm" onClick={() => setRepairTicketOpen(true)}>
+                Ticket Ac
               </Button>
             )}
           </div>
@@ -399,6 +414,23 @@ export default function CargoDetailPage({ params }: PageProps) {
                         <span className="font-medium">{getPurposeText(device.purpose)}</span>
                       </div>
                     </div>
+                    {device.repairTicket ? (
+                      <div className="flex items-center gap-2 pt-1">
+                        <Badge variant={device.repairTicket.status === 'open' ? 'destructive' : 'default'}>
+                          {device.repairTicket.status === 'open' ? 'Tamirde' : 'Tamir Tamamlandi'}
+                        </Badge>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0"
+                          onClick={() => router.push(`/dashboard/repairs/${device.repairTicket?.id}`)}
+                        >
+                          {device.repairTicket.repairNumber}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground pt-1">Bu cihaz icin tamir ticketi yok.</div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -448,6 +480,15 @@ export default function CargoDetailPage({ params }: PageProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {cargo ? (
+        <CargoRepairTicketDialog
+          open={repairTicketOpen}
+          onOpenChange={setRepairTicketOpen}
+          cargo={cargo}
+          onSuccess={fetchCargo}
+        />
+      ) : null}
     </div>
   )
 }

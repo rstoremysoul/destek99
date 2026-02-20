@@ -4,8 +4,12 @@ export interface CargoRepairHistoryItem {
   technicianName?: string
   operations?: string[]
   note?: string
+  approvalStatus?: CargoRepairApprovalStatus
+  approvalNote?: string
   laborCost?: number
   partsCost?: number
+  distributorCost?: number
+  internalServiceCost?: number
   totalCost?: number
 }
 
@@ -23,13 +27,21 @@ export interface CargoRepairMeta {
   imageUrl?: string
   note?: string
   spareParts: CargoRepairSparePartItem[]
+  approvalStatus: CargoRepairApprovalStatus
+  approvalAt?: string
+  approvalNote?: string
   laborCost?: number
   partsCost?: number
+  distributorCost?: number
+  internalServiceCost?: number
   totalCost?: number
   status: 'pending' | 'in_progress' | 'completed'
+  shipmentStatus: 'pending' | 'ready_to_ship' | 'shipped'
   history: CargoRepairHistoryItem[]
   updatedAt: string
 }
+
+export type CargoRepairApprovalStatus = 'pending' | 'approved' | 'rejected'
 
 const META_TAG = '[[CARGO_REPAIR_META]]'
 
@@ -40,10 +52,16 @@ const defaultMeta = (): CargoRepairMeta => ({
   imageUrl: '',
   note: '',
   spareParts: [],
+  approvalStatus: 'pending',
+  approvalAt: '',
+  approvalNote: '',
   laborCost: 0,
   partsCost: 0,
+  distributorCost: 0,
+  internalServiceCost: 0,
   totalCost: 0,
   status: 'pending',
+  shipmentStatus: 'pending',
   history: [],
   updatedAt: new Date().toISOString(),
 })
@@ -76,6 +94,14 @@ export function parseCargoRepairMeta(notes?: string | null): {
         history: Array.isArray(parsed?.history) ? parsed.history : [],
         operations: Array.isArray(parsed?.operations) ? parsed.operations : [],
         spareParts: Array.isArray(parsed?.spareParts) ? parsed.spareParts : [],
+        approvalStatus:
+          parsed?.approvalStatus === 'approved' || parsed?.approvalStatus === 'rejected'
+            ? parsed.approvalStatus
+            : 'pending',
+        shipmentStatus:
+          parsed?.shipmentStatus === 'ready_to_ship' || parsed?.shipmentStatus === 'shipped'
+            ? parsed.shipmentStatus
+            : 'pending',
       }
     } catch {
       meta = null

@@ -140,6 +140,8 @@ model DeviceRepair {
   warrantyInfo        String?      @map("warranty_info")
   laborCost           Float?       @map("labor_cost")
   partsCost           Float?       @map("parts_cost")
+  distributorCost     Float?       @map("distributor_cost")
+  internalServiceCost Float?       @map("internal_service_cost")
   totalCost           Float?       @map("total_cost")
   repairCost          Float?       @map("repair_cost")
   createdAt           DateTime     @default(now()) @map("created_at")

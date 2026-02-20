@@ -12,6 +12,7 @@ import { CargoTracking } from '@/types'
 import { Plus, Search, Eye, Truck, Package, ArrowUp, ArrowDown, MapPin, ArrowRightLeft, Pencil, Lock, PauseCircle } from 'lucide-react'
 import { CargoFormDialog } from '@/components/cargo-form-dialog'
 import { CargoDispatchDialog } from '@/components/cargo-dispatch-dialog'
+import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
 import { toast } from 'sonner'
 
 export default function CargoPage() {
@@ -21,7 +22,7 @@ export default function CargoPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [recordStatusFilter, setRecordStatusFilter] = useState<'open' | 'on_hold' | 'closed' | 'device_repair' | 'all'>('open')
+  const [recordStatusFilter, setRecordStatusFilter] = useState<'open' | 'on_hold' | 'closed' | 'device_repair' | 'ready_to_ship' | 'all'>('all')
   const [destinationFilter, setDestinationFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('all')
   const [dateRangeStart, setDateRangeStart] = useState('')
@@ -31,6 +32,8 @@ export default function CargoPage() {
   const [selectedCargo, setSelectedCargo] = useState<CargoTracking | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [editingCargo, setEditingCargo] = useState<CargoTracking | null>(null)
+  const [repairTicketOpen, setRepairTicketOpen] = useState(false)
+  const [repairTicketCargo, setRepairTicketCargo] = useState<CargoTracking | null>(null)
   const router = useRouter()
 
   const recordsPerPage = 20
@@ -70,6 +73,14 @@ export default function CargoPage() {
               deviceName: d.deviceName,
               model: d.model,
               serialNumber: d.serialNumber,
+              repairTicket: d.repairTicket
+                ? {
+                    id: d.repairTicket.id,
+                    repairNumber: d.repairTicket.repairNumber,
+                    status: d.repairTicket.status,
+                    state: d.repairTicket.state,
+                  }
+                : undefined,
               deviceSource: d.deviceSource || 'other',
               equivalentDeviceId: d.equivalentDeviceId || undefined,
               customerName: d.customerName || undefined,
@@ -131,6 +142,7 @@ export default function CargoPage() {
       case 'on_hold': return 'Beklemede'
       case 'closed': return 'Kapalı'
       case 'device_repair': return 'Cihaz Tamiri'
+      case 'ready_to_ship': return 'Gonderime Hazir'
       default: return 'Açık'
     }
   }
@@ -157,14 +169,17 @@ export default function CargoPage() {
       if (response.ok) {
         fetchCargos()
         toast.success('Kargo kaydi olusturuldu')
+        return true
       } else {
         const error = await response.json().catch(() => null)
         toast.error(error?.error || 'Kargo kaydi olusturulamadi')
         console.error('Failed to create cargo', error)
+        return false
       }
     } catch (error) {
       toast.error('Kargo kaydi olusturulurken hata olustu')
       console.error('Error creating cargo:', error)
+      return false
     }
   }
 
@@ -180,15 +195,30 @@ export default function CargoPage() {
 
       if (response.ok) {
         fetchCargos()
+        toast.success('Kargo kaydi guncellendi')
+        return true
       } else {
+        const error = await response.json().catch(() => null)
+        toast.error(error?.error || 'Kargo kaydi guncellenemedi')
         console.error('Failed to update cargo')
+        return false
       }
     } catch (error) {
+      toast.error('Kargo kaydi guncellenirken hata olustu')
       console.error('Error updating cargo:', error)
+      return false
     }
   }
 
   const handleUpdateRecordStatus = async (cargoId: string, newStatus: 'open' | 'on_hold' | 'closed' | 'device_repair') => {
+    if (newStatus === 'device_repair') {
+      const cargo = cargos.find((item) => item.id === cargoId)
+      if (!cargo) return
+      setRepairTicketCargo(cargo)
+      setRepairTicketOpen(true)
+      return
+    }
+
     try {
       const response = await fetch(`/api/cargo/${cargoId}`, {
         method: 'PATCH',
@@ -290,7 +320,8 @@ export default function CargoPage() {
       case 'open': return 0
       case 'on_hold': return 1
       case 'device_repair': return 2
-      case 'closed': return 3
+      case 'ready_to_ship': return 3
+      case 'closed': return 4
       default: return 0
     }
   }
@@ -383,7 +414,7 @@ export default function CargoPage() {
 
           <Select
             value={recordStatusFilter}
-            onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair' | 'all') => setRecordStatusFilter(value)}
+            onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair' | 'ready_to_ship' | 'all') => setRecordStatusFilter(value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Kayıt Durumu" />
@@ -392,6 +423,7 @@ export default function CargoPage() {
               <SelectItem value="open">Açık Kayıtlar (+ Tamirde)</SelectItem>
               <SelectItem value="on_hold">Beklemede</SelectItem>
               <SelectItem value="device_repair">Cihaz Tamiri</SelectItem>
+              <SelectItem value="ready_to_ship">Gonderime Hazir</SelectItem>
               <SelectItem value="closed">Kapalı Kayıtlar</SelectItem>
               <SelectItem value="all">Tüm Kayıtlar</SelectItem>
             </SelectContent>
@@ -466,7 +498,7 @@ export default function CargoPage() {
         )}
 
         {/* Aktif Filtreler */}
-        {(typeFilter !== 'all' || statusFilter !== 'all' || recordStatusFilter !== 'open' || destinationFilter !== 'all' || dateFilter !== 'all') && (
+        {(typeFilter !== 'all' || statusFilter !== 'all' || recordStatusFilter !== 'all' || destinationFilter !== 'all' || dateFilter !== 'all') && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Aktif Filtreler:</span>
             {typeFilter !== 'all' && (
@@ -479,9 +511,9 @@ export default function CargoPage() {
                 Durum: {getStatusText(statusFilter)} ✕
               </Badge>
             )}
-            {recordStatusFilter !== 'open' && (
-              <Badge variant="secondary" className="cursor-pointer" onClick={() => setRecordStatusFilter('open')}>
-                Kayıt: {recordStatusFilter === 'closed' ? 'Kapalı' : recordStatusFilter === 'on_hold' ? 'Beklemede' : recordStatusFilter === 'device_repair' ? 'Cihaz Tamiri' : 'Tümü'} ✕
+            {recordStatusFilter !== 'all' && (
+              <Badge variant="secondary" className="cursor-pointer" onClick={() => setRecordStatusFilter('all')}>
+                Kayıt: {recordStatusFilter === 'closed' ? 'Kapalı' : recordStatusFilter === 'on_hold' ? 'Beklemede' : recordStatusFilter === 'device_repair' ? 'Cihaz Tamiri' : recordStatusFilter === 'ready_to_ship' ? 'Gonderime Hazir' : 'Tümü'} ✕
               </Badge>
             )}
             {destinationFilter !== 'all' && (
@@ -518,7 +550,7 @@ export default function CargoPage() {
               onClick={() => {
                 setTypeFilter('all')
                 setStatusFilter('all')
-                setRecordStatusFilter('open')
+                setRecordStatusFilter('all')
                 setDestinationFilter('all')
                 setDateFilter('all')
                 setDateRangeStart('')
@@ -638,6 +670,8 @@ export default function CargoPage() {
                         ? 'bg-muted/40 text-muted-foreground border-l-4 border-l-muted-foreground/40'
                         : cargo.recordStatus === 'on_hold'
                           ? 'bg-amber-50/60 border-l-4 border-l-amber-500/60'
+                          : cargo.recordStatus === 'ready_to_ship'
+                            ? 'bg-emerald-50/60 border-l-4 border-l-emerald-500/60'
                           : ''
                     }`}
                   >
@@ -665,7 +699,7 @@ export default function CargoPage() {
                       </Badge>
                     </td>
                     <td className="p-4 align-middle">
-                      <Badge variant={cargo.recordStatus === 'closed' ? 'secondary' : cargo.recordStatus === 'on_hold' ? 'outline' : cargo.recordStatus === 'device_repair' ? 'destructive' : 'default'} className="gap-1">
+                      <Badge variant={cargo.recordStatus === 'closed' ? 'secondary' : cargo.recordStatus === 'on_hold' ? 'outline' : cargo.recordStatus === 'device_repair' ? 'destructive' : cargo.recordStatus === 'ready_to_ship' ? 'default' : 'default'} className="gap-1">
                         {cargo.recordStatus === 'closed' ? <Lock className="h-3 w-3" /> : cargo.recordStatus === 'on_hold' ? <PauseCircle className="h-3 w-3" /> : null}
                         {getRecordStatusText(cargo.recordStatus)}
                       </Badge>
@@ -698,7 +732,14 @@ export default function CargoPage() {
                       )}
                     </td>
                     <td className="p-4 align-middle text-center">
-                      {cargo.devices.length}
+                      <div className="flex flex-col items-center">
+                        <span>{cargo.devices.length}</span>
+                        {cargo.devices.some((d) => d.repairTicket) ? (
+                          <span className="text-[11px] text-muted-foreground">
+                            Tamirli: {cargo.devices.filter((d) => d.repairTicket?.status === 'closed').length} / Tamirde: {cargo.devices.filter((d) => d.repairTicket?.status === 'open').length}
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="p-4 align-middle">
                       <div className="flex gap-2">
@@ -740,13 +781,16 @@ export default function CargoPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => router.push(`/dashboard/repairs/cargo/${cargo.id}`)}
+                            onClick={() => {
+                              setRepairTicketCargo(cargo)
+                              setRepairTicketOpen(true)
+                            }}
                           >
-                            Tamiri Yönet
+                            Ticket Ac
                           </Button>
                         )}
                         <Select
-                          value={cargo.recordStatus || 'open'}
+                          value={cargo.recordStatus === 'ready_to_ship' ? 'open' : (cargo.recordStatus || 'open')}
                           onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair') => handleUpdateRecordStatus(cargo.id, value as any)}
                         >
                           <SelectTrigger className="h-8 w-[140px]">
@@ -836,6 +880,18 @@ export default function CargoPage() {
             if (!open) setSelectedCargo(null)
           }}
           cargo={selectedCargo}
+          onSuccess={fetchCargos}
+        />
+      )}
+
+      {repairTicketCargo && (
+        <CargoRepairTicketDialog
+          open={repairTicketOpen}
+          onOpenChange={(open) => {
+            setRepairTicketOpen(open)
+            if (!open) setRepairTicketCargo(null)
+          }}
+          cargo={repairTicketCargo}
           onSuccess={fetchCargos}
         />
       )}

@@ -16,60 +16,35 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
-    ],
-    "/dashboard/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/page.js"
-    ],
     "/dashboard/repairs/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/repairs/page.js"
-    ],
-    "/dashboard/repairs/cargo/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/repairs/cargo/[id]/page.js"
-    ],
-    "/dashboard/repairs/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/repairs/[id]/page.js"
     ],
     "/dashboard/equivalent-devices/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/equivalent-devices/page.js"
     ],
+    "/dashboard/repairs/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/repairs/[id]/page.js"
+    ],
     "/dashboard/settings/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/settings/page.js"
     ],
-    "/dashboard/companies/page": [
+    "/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/companies/page.js"
+      "static/chunks/app/dashboard/page.js"
     ],
-    "/dashboard/customers/page": [
+    "/dashboard/cargo/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/customers/page.js"
-    ],
-    "/dashboard/warehouses/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/warehouses/page.js"
-    ],
-    "/dashboard/technical-service/analytics/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/technical-service/analytics/page.js"
+      "static/chunks/app/dashboard/cargo/[id]/page.js"
     ],
     "/dashboard/vendor-tracking/page": [
       "static/chunks/webpack.js",
@@ -81,10 +56,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/technical-service/page.js"
     ],
-    "/dashboard/cargo/[id]/page": [
+    "/dashboard/installations/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/cargo/[id]/page.js"
+      "static/chunks/app/dashboard/installations/page.js"
+    ],
+    "/login/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/login/page.js"
     ]
   }
 }

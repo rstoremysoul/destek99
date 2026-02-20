@@ -8,13 +8,42 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { CargoRepairTicket, DeviceRepair } from '@/types'
+import { DeviceRepair } from '@/types'
 import { Plus, Search, Eye, Wrench, Calendar, CheckCircle, Clock, Shield, Lock } from 'lucide-react'
 import { RepairFormDialog } from '@/components/repair-form-dialog'
 
+const REPAIR_META_TAG = '[[REPAIR_TICKET_META]]'
+
+function parseRepairTicketMeta(raw?: string | null) {
+  const text = String(raw || '')
+  const defaultMeta = {
+    operations: [] as string[],
+    customerApprovalStatus: 'pending' as 'pending' | 'approved' | 'rejected',
+    approvalNote: '',
+  }
+  if (!text.includes(REPAIR_META_TAG)) return defaultMeta
+
+  for (const line of text.split('\n')) {
+    if (!line.startsWith(REPAIR_META_TAG)) continue
+    try {
+      const parsed = JSON.parse(line.slice(REPAIR_META_TAG.length).trim())
+      return {
+        operations: Array.isArray(parsed?.operations) ? parsed.operations : [],
+        customerApprovalStatus:
+          parsed?.customerApprovalStatus === 'approved' || parsed?.customerApprovalStatus === 'rejected'
+            ? parsed.customerApprovalStatus
+            : 'pending',
+        approvalNote: String(parsed?.approvalNote || ''),
+      }
+    } catch {
+      return defaultMeta
+    }
+  }
+  return defaultMeta
+}
+
 export default function RepairsPage() {
   const [repairs, setRepairs] = useState<DeviceRepair[]>([])
-  const [cargoRepairs, setCargoRepairs] = useState<CargoRepairTicket[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -31,7 +60,6 @@ export default function RepairsPage() {
 
   useEffect(() => {
     fetchRepairs()
-    fetchCargoRepairs()
   }, [])
 
   const fetchRepairs = async () => {
@@ -41,6 +69,7 @@ export default function RepairsPage() {
       if (response.ok) {
         const data = await response.json()
         const mappedData = data.map((item: any) => ({
+          ...parseRepairTicketMeta(item.repairNotes),
           id: item.id,
           repairNumber: item.repairNumber,
           companyId: item.companyId,
@@ -65,6 +94,8 @@ export default function RepairsPage() {
           technicianName: item.technician?.name || 'Atanmamış',
           laborCost: item.laborCost,
           partsCost: item.partsCost,
+          distributorCost: item.distributorCost,
+          internalServiceCost: item.internalServiceCost,
           totalCost: item.totalCost,
           repairCost: item.repairCost,
           createdAt: new Date(item.createdAt),
@@ -76,34 +107,6 @@ export default function RepairsPage() {
       console.error('Error fetching repairs:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchCargoRepairs = async () => {
-    try {
-      const response = await fetch('/api/cargo-repairs')
-      if (!response.ok) return
-      const data = await response.json()
-      const mapped = (Array.isArray(data) ? data : []).map((item: any) => ({
-        id: item.id,
-        trackingNumber: item.trackingNumber,
-        sender: item.sender,
-        receiver: item.receiver,
-        cargoCompany: item.cargoCompany || '',
-        currentLocationName: item.currentLocationName || null,
-        recordStatus: item.recordStatus || 'device_repair',
-        devices: item.devices || [],
-        technicianName: item.technicianName || '',
-        operations: item.operations || [],
-        imageUrl: item.imageUrl || '',
-        repairNote: item.repairNote || '',
-        repairHistory: item.repairHistory || [],
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      }))
-      setCargoRepairs(mapped)
-    } catch (error) {
-      console.error('Error fetching cargo repairs:', error)
     }
   }
 
@@ -229,6 +232,18 @@ export default function RepairsPage() {
       case 'low': return 'Düşük'
       default: return priority
     }
+  }
+
+  const getApprovalText = (status?: string) => {
+    if (status === 'approved') return 'Onaylandi'
+    if (status === 'rejected') return 'Reddedildi'
+    return 'Onay Bekliyor'
+  }
+
+  const getApprovalVariant = (status?: string): 'default' | 'secondary' | 'destructive' => {
+    if (status === 'approved') return 'default'
+    if (status === 'rejected') return 'destructive'
+    return 'secondary'
   }
 
   const formatDate = (date: Date) => {
@@ -377,6 +392,7 @@ export default function RepairsPage() {
               <SelectItem value="custom">Özel Tarih Aralığı</SelectItem>
             </SelectContent>
           </Select>
+
         </div>
 
         {/* Tarih Aralığı Seçici */}
@@ -528,39 +544,6 @@ export default function RepairsPage() {
         </div>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Kargodan Gelen Cihaz Tamiri Ticketları</CardTitle>
-          <CardDescription>
-            Kargo takipte durumu &quot;Cihaz Tamiri&quot; olan kayıtlar burada görünür.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {cargoRepairs.map((ticket) => (
-              <div key={ticket.id} className="border rounded-md p-3 flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{ticket.trackingNumber}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {ticket.sender} → {ticket.receiver} • {ticket.devices.length} cihaz
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Teknisyen: {ticket.technicianName || 'Atanmadı'}
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/repairs/cargo/${ticket.id}`)}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Tamiri Yönet
-                </Button>
-              </div>
-            ))}
-            {cargoRepairs.length === 0 && (
-              <div className="text-sm text-muted-foreground">Aktif kargo tamir ticketı yok.</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Tablo */}
       <Card>
         <CardHeader>
@@ -583,6 +566,9 @@ export default function RepairsPage() {
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Öncelik</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Alınma Tarihi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Teknisyen</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Musteri Onayi</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Fiyatlar</th>
+                  <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Islem</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Garanti</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">İşlemler</th>
                 </tr>
@@ -631,6 +617,19 @@ export default function RepairsPage() {
                     </td>
                     <td className="p-4 align-middle">
                       {repair.technicianName || '-'}
+                    </td>
+                    <td className="p-4 align-middle">
+                      <Badge variant={getApprovalVariant(repair.customerApprovalStatus)}>
+                        {getApprovalText(repair.customerApprovalStatus)}
+                      </Badge>
+                    </td>
+                    <td className="p-4 align-middle text-xs">
+                      <div>Parca: {(repair.partsCost || 0).toFixed(2)} TL</div>
+                      <div>Distrib.: {(repair.distributorCost || 0).toFixed(2)} TL</div>
+                      <div className="font-medium">Musteri: {(repair.repairCost || 0).toFixed(2)} TL</div>
+                    </td>
+                    <td className="p-4 align-middle text-center">
+                      <Badge variant="outline">{repair.operations?.length || 0}</Badge>
                     </td>
                     <td className="p-4 align-middle text-center">
                       {repair.isWarranty ? (

@@ -1,12 +1,8 @@
 {
-  "/api/brands/all/route": "app/api/brands/all/route.js",
-  "/api/brands/[id]/route": "app/api/brands/[id]/route.js",
-  "/api/brands/route": "app/api/brands/route.js",
-  "/api/models/all/route": "app/api/models/all/route.js",
-  "/api/models/route": "app/api/models/route.js",
-  "/dashboard/cargo/[id]/page": "app/dashboard/cargo/[id]/page.js",
+  "/login/page": "app/login/page.js",
+  "/dashboard/technical-service/page": "app/dashboard/technical-service/page.js",
   "/dashboard/repairs/page": "app/dashboard/repairs/page.js",
   "/dashboard/cargo/page": "app/dashboard/cargo/page.js",
-  "/dashboard/repairs/cargo/[id]/page": "app/dashboard/repairs/cargo/[id]/page.js",
-  "/dashboard/settings/page": "app/dashboard/settings/page.js"
+  "/dashboard/vendor-tracking/page": "app/dashboard/vendor-tracking/page.js",
+  "/dashboard/installations/page": "app/dashboard/installations/page.js"
 }

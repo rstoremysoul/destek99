@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 interface CargoFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (cargo: Partial<CargoTracking>) => void
+  onSubmit: (cargo: Partial<CargoTracking>) => Promise<boolean | void> | boolean | void
   initialData?: CargoTracking | null
   mode?: 'create' | 'edit'
 }
@@ -132,6 +132,7 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
     exists: false,
     checkedValue: '',
   })
+  const [submitting, setSubmitting] = useState(false)
   const trackingCheckReqRef = useRef(0)
 
   const mergedCompanies = useMemo(
@@ -451,6 +452,23 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!formData.trackingNumber.trim()) {
+      toast.error('Takip numarasi zorunludur')
+      return
+    }
+    if (!formData.sender.trim()) {
+      toast.error('Gonderen zorunludur')
+      return
+    }
+    if (!formData.receiver.trim()) {
+      toast.error('Alici zorunludur')
+      return
+    }
+    if (!formData.cargoCompany.trim()) {
+      toast.error('Kargo sirketi secmelisiniz')
+      return
+    }
+
     const trackingConflict = await checkTrackingConflict(formData.trackingNumber)
     if (trackingConflict) {
       toast.error('Bu takip numarasi zaten kayitli')
@@ -460,6 +478,12 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
     const invalidEquivalent = devices.find((d) => d.sourceType === 'equivalent' && !d.equivalentDeviceId)
     if (invalidEquivalent) {
       toast.error('Muadil cihaz satirlarinda listeden cihaz secmelisiniz')
+      return
+    }
+
+    const missingSerialIndex = devices.findIndex((d) => !String(d.serialNumber || '').trim())
+    if (missingSerialIndex >= 0) {
+      toast.error(`Cihaz #${missingSerialIndex + 1} icin seri no zorunludur`)
       return
     }
 
@@ -511,7 +535,17 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
       })),
     }
 
-    onSubmit(payload)
+    setSubmitting(true)
+    let submitResult: boolean | void = true
+    try {
+      submitResult = await onSubmit(payload)
+    } finally {
+      setSubmitting(false)
+    }
+
+    if (submitResult === false) {
+      return
+    }
 
     if (mode === 'create') {
       setFormData({
@@ -881,7 +915,10 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Iptal
             </Button>
-            <Button type="submit" disabled={trackingCheck.checking || trackingCheck.exists}>
+            <Button
+              type="submit"
+              disabled={submitting}
+            >
               {mode === 'edit' ? 'Kaydi Guncelle' : 'Kaydi Olustur'}
             </Button>
           </DialogFooter>

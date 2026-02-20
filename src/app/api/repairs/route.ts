@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
       technicianName,
       laborCost,
       partsCost,
+      distributorCost,
+      internalServiceCost,
       totalCost,
       repairCost,
     } = body
@@ -128,6 +130,8 @@ export async function POST(request: NextRequest) {
         technicianId: assignedTechnician || null,
         laborCost,
         partsCost,
+        distributorCost,
+        internalServiceCost,
         totalCost,
         repairCost,
       },
