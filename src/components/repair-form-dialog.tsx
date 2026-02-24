@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DeviceRepair, Technician } from '@/types'
+import { Hash, Cpu, Building2, User, CalendarClock, AlertTriangle } from 'lucide-react'
 
 interface RepairFormDialogProps {
   open: boolean
@@ -183,11 +184,9 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
-            Yeni Tamir Kaydı
-          </DialogTitle>
+      <DialogContent className="max-w-7xl max-h-[92vh] overflow-y-auto border-t-4 border-t-orange-500 bg-[#f5f5f5]">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-2xl font-semibold">Yeni Tamir Kaydi</DialogTitle>
           <DialogDescription>
             Yeni bir tamir kaydı oluşturun. Cihaz ve arıza bilgilerini girin.
           </DialogDescription>
@@ -196,7 +195,7 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid gap-4">
             {/* Cihaz Bilgileri */}
-            <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="space-y-4 rounded-md border bg-white/70 p-4">
               <h3 className="font-semibold text-slate-900">Cihaz Bilgileri</h3>
 
               <div className="grid grid-cols-2 gap-4">
@@ -204,28 +203,38 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
                   <Label htmlFor="deviceName" className="text-sm font-medium">
                     Cihaz Adı *
                   </Label>
-                  <Input
-                    id="deviceName"
-                    value={formData.deviceName}
-                    onChange={(e) => setFormData({ ...formData, deviceName: e.target.value })}
-                    placeholder="Örn: HP LaserJet Pro"
-                    required
-                    className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
-                  />
+                  <div className="flex">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                      <Cpu className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Input
+                      id="deviceName"
+                      value={formData.deviceName}
+                      onChange={(e) => setFormData({ ...formData, deviceName: e.target.value })}
+                      placeholder="Orn: HP LaserJet Pro"
+                      required
+                      className="rounded-l-none border-slate-200"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="model" className="text-sm font-medium">
                     Model *
                   </Label>
-                  <Input
-                    id="model"
-                    value={formData.model}
-                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    placeholder="Örn: MFP M428fdw"
-                    required
-                    className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
-                  />
+                  <div className="flex">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                      <Hash className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Input
+                      id="model"
+                      value={formData.model}
+                      onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                      placeholder="Orn: MFP M428fdw"
+                      required
+                      className="rounded-l-none border-slate-200"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -233,19 +242,24 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
                 <Label htmlFor="serialNumber" className="text-sm font-medium">
                   Seri Numarası *
                 </Label>
-                <Input
-                  id="serialNumber"
-                  value={formData.serialNumber}
-                  onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                  placeholder="Cihazın seri numarasını girin"
-                  required
-                  className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
-                />
+                <div className="flex">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <Input
+                    id="serialNumber"
+                    value={formData.serialNumber}
+                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                    placeholder="Cihazin seri numarasini girin"
+                    required
+                    className="rounded-l-none border-slate-200"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Müşteri Bilgileri */}
-            <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="space-y-4 rounded-md border bg-white/70 p-4">
               <h3 className="font-semibold text-slate-900">Müşteri Bilgileri</h3>
 
               <div className="grid grid-cols-2 gap-4">
@@ -253,48 +267,63 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
                   <Label htmlFor="companyName" className="text-sm font-medium">
                     Firma Adı *
                   </Label>
-                  <Input
-                    id="companyName"
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    placeholder="Firma adını girin"
-                    required
-                    className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
-                  />
+                  <div className="flex">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Input
+                      id="companyName"
+                      value={formData.companyName}
+                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                      placeholder="Firma adini girin"
+                      required
+                      className="rounded-l-none border-slate-200"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="customerName" className="text-sm font-medium">
                     Müşteri Adı *
                   </Label>
-                  <Input
-                    id="customerName"
-                    value={formData.customerName}
-                    onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                    placeholder="Müşteri adını girin"
-                    required
-                    className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
-                  />
+                  <div className="flex">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Input
+                      id="customerName"
+                      value={formData.customerName}
+                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                      placeholder="Musteri adini girin"
+                      required
+                      className="rounded-l-none border-slate-200"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Arıza Bilgileri */}
-            <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="space-y-4 rounded-md border bg-white/70 p-4">
               <h3 className="font-semibold text-slate-900">Arıza Bilgileri</h3>
 
               <div className="space-y-2">
                 <Label htmlFor="problemDescription" className="text-sm font-medium">
                   Sorun Açıklaması *
                 </Label>
-                <Textarea
-                  id="problemDescription"
-                  value={formData.problemDescription}
-                  onChange={(e) => setFormData({ ...formData, problemDescription: e.target.value })}
-                  placeholder="Cihazın arıza açıklamasını detaylı olarak girin"
-                  required
-                  className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 min-h-[100px]"
-                />
+                <div className="flex">
+                  <div className="flex min-h-[100px] w-10 items-start justify-center rounded-l-md border border-r-0 bg-muted pt-3">
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <Textarea
+                    id="problemDescription"
+                    value={formData.problemDescription}
+                    onChange={(e) => setFormData({ ...formData, problemDescription: e.target.value })}
+                    placeholder="Cihazin ariza aciklamasini detayli olarak girin"
+                    required
+                    className="min-h-[100px] rounded-l-none border-slate-200"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -369,13 +398,18 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
                   <Label htmlFor="estimatedCompletionDate" className="text-sm font-medium">
                     Tahmini Tamamlanma Tarihi
                   </Label>
-                  <Input
-                    id="estimatedCompletionDate"
-                    type="date"
-                    value={formData.estimatedCompletionDate}
-                    onChange={(e) => setFormData({ ...formData, estimatedCompletionDate: e.target.value })}
-                    className="border-slate-200 focus:border-purple-400 focus:ring-purple-400/20"
-                  />
+                  <div className="flex">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                      <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Input
+                      id="estimatedCompletionDate"
+                      type="date"
+                      value={formData.estimatedCompletionDate}
+                      onChange={(e) => setFormData({ ...formData, estimatedCompletionDate: e.target.value })}
+                      className="rounded-l-none border-slate-200"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -396,7 +430,7 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
             </div>
 
             {/* Garanti ve Maliyet */}
-            <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="space-y-4 rounded-md border bg-white/70 p-4">
               <h3 className="font-semibold text-slate-900">Garanti ve Maliyet</h3>
 
               <div className="flex items-center space-x-2">
@@ -530,12 +564,12 @@ export function RepairFormDialog({ open, onOpenChange, onSubmit }: RepairFormDia
             >
               İptal
             </Button>
-            <Button
-              type="submit"
-              className="bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white"
-            >
-              Tamir Kaydı Oluştur
-            </Button>
+              <Button
+                type="submit"
+                className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              >
+                Tamir Kaydı Oluştur
+              </Button>
           </DialogFooter>
         </form>
       </DialogContent>

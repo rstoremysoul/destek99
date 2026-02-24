@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CargoTracking } from '@/types'
-import { Plus, Search, Eye, Truck, Package, ArrowUp, ArrowDown, MapPin, ArrowRightLeft, Pencil, Lock, PauseCircle } from 'lucide-react'
+import { Plus, Search, Eye, Truck, Package, ArrowUp, ArrowDown, MapPin, ArrowRightLeft, Pencil, Lock, PauseCircle, CheckCircle2, Wrench, FolderOpen, XCircle, Clock3, MoreVertical } from 'lucide-react'
 import { CargoFormDialog } from '@/components/cargo-form-dialog'
 import { CargoDispatchDialog } from '@/components/cargo-dispatch-dialog'
 import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
@@ -148,7 +149,14 @@ export default function CargoPage() {
   }
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('tr-TR').format(date)
+    return new Intl.DateTimeFormat('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date)
   }
 
   const truncateText = (text: string, maxLength: number = 30) => {
@@ -244,18 +252,23 @@ export default function CargoPage() {
   }
 
   const filteredCargos = cargos.filter(cargo => {
+    const lowerSearch = searchTerm.toLowerCase()
     const matchesSearch =
-      cargo.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cargo.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cargo.receiver.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cargo.cargoCompany.toLowerCase().includes(searchTerm.toLowerCase())
+      cargo.trackingNumber.toLowerCase().includes(lowerSearch) ||
+      cargo.sender.toLowerCase().includes(lowerSearch) ||
+      cargo.receiver.toLowerCase().includes(lowerSearch) ||
+      cargo.cargoCompany.toLowerCase().includes(lowerSearch) ||
+      cargo.devices.some((device) =>
+        String(device.serialNumber || '').toLowerCase().includes(lowerSearch) ||
+        String(device.repairTicket?.repairNumber || '').toLowerCase().includes(lowerSearch)
+      )
 
     const matchesType = typeFilter === 'all' || cargo.type === typeFilter
     const matchesStatus = statusFilter === 'all' || cargo.status === statusFilter
     const matchesRecordStatus =
       recordStatusFilter === 'all' ||
       (recordStatusFilter === 'open'
-        ? (cargo.recordStatus === 'open' || cargo.recordStatus === 'device_repair')
+        ? (cargo.recordStatus === 'open' || cargo.recordStatus === 'device_repair' || cargo.recordStatus === 'ready_to_ship')
         : cargo.recordStatus === recordStatusFilter)
     const matchesDestination = destinationFilter === 'all' || cargo.destination === destinationFilter
 
@@ -344,6 +357,10 @@ export default function CargoPage() {
     outgoing: cargos.filter(c => c.type === 'outgoing').length,
     inTransit: cargos.filter(c => c.status === 'in_transit').length,
     delivered: cargos.filter(c => c.status === 'delivered').length,
+    repair: cargos.filter(c => c.recordStatus === 'device_repair').length,
+    readyToShip: cargos.filter(c => c.recordStatus === 'ready_to_ship').length,
+    onHold: cargos.filter(c => c.recordStatus === 'on_hold').length,
+    closed: cargos.filter(c => c.recordStatus === 'closed').length,
   }
 
   if (loading) {
@@ -565,72 +582,90 @@ export default function CargoPage() {
       </div>
 
       {/* İstatistik Kartları */}
-      <div className="grid gap-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Kargo</CardTitle>
-              <Truck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                Tüm kargo kayıtları
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Gelen</CardTitle>
-              <ArrowDown className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.incoming}</div>
-              <p className="text-xs text-muted-foreground">
-                Gelen kargolar
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Giden</CardTitle>
-              <ArrowUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.outgoing}</div>
-              <p className="text-xs text-muted-foreground">
-                Giden kargolar
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Yolda</CardTitle>
-              <Truck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.inTransit}</div>
-              <p className="text-xs text-muted-foreground">
-                Teslimat bekleyen
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Teslim Edilen</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.delivered}</div>
-              <p className="text-xs text-muted-foreground">
-                Başarıyla teslim edildi
-              </p>
-            </CardContent>
-          </Card>
+      <div className="mb-6 space-y-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-md bg-amber-500 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">CIHAZ TAMIRINDE</p>
+                <p className="text-2xl font-extrabold">{stats.repair} ADET</p>
+              </div>
+              <Wrench className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Tamir sureci devam eden kayitlar</div>
+          </div>
+          <div className="rounded-md bg-emerald-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">GONDERIME HAZIR</p>
+                <p className="text-2xl font-extrabold">{stats.readyToShip} ADET</p>
+              </div>
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Tamiri tamamlanan ve sevke hazir kayitlar</div>
+          </div>
+          <div className="rounded-md bg-slate-900 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">BEKLEMEDE</p>
+                <p className="text-2xl font-extrabold">{stats.onHold} ADET</p>
+              </div>
+              <Clock3 className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Islem bekleyen kayitlar</div>
+          </div>
+          <div className="rounded-md bg-red-500 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">KAPALI KAYIT</p>
+                <p className="text-2xl font-extrabold">{stats.closed} ADET</p>
+              </div>
+              <XCircle className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Tamamlanmis veya kapatilmis kayitlar</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-md bg-fuchsia-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">GELEN KARGO</p>
+                <p className="text-2xl font-extrabold">{stats.incoming} ADET</p>
+              </div>
+              <ArrowDown className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Depoya giris yapan kargolar</div>
+          </div>
+          <div className="rounded-md bg-cyan-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">GIDEN KARGO</p>
+                <p className="text-2xl font-extrabold">{stats.outgoing} ADET</p>
+              </div>
+              <ArrowUp className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Musteri veya tedarikciye cikanlar</div>
+          </div>
+          <div className="rounded-md bg-blue-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">YOLDA</p>
+                <p className="text-2xl font-extrabold">{stats.inTransit} ADET</p>
+              </div>
+              <Truck className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Teslimat sureci devam edenler</div>
+          </div>
+          <div className="rounded-md bg-indigo-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">TESLIM EDILDI</p>
+                <p className="text-2xl font-extrabold">{stats.delivered} ADET</p>
+              </div>
+              <Package className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Sureci tamamlanan teslimatlar</div>
+          </div>
         </div>
       </div>
 
@@ -643,6 +678,36 @@ export default function CargoPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setIsFormOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Yeni Kargo
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => { setRecordStatusFilter('open'); setTypeFilter('all') }}>
+              <FolderOpen className="h-4 w-4" />
+              Acik Kayitlar
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setTypeFilter('incoming')}>
+              <ArrowDown className="h-4 w-4" />
+              Gelen
+              <Badge variant="secondary">{stats.incoming}</Badge>
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setTypeFilter('outgoing')}>
+              <ArrowUp className="h-4 w-4" />
+              Giden
+              <Badge variant="secondary">{stats.outgoing}</Badge>
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setRecordStatusFilter('device_repair')}>
+              <Wrench className="h-4 w-4" />
+              Tamirde
+              <Badge variant="secondary">{stats.repair}</Badge>
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setRecordStatusFilter('ready_to_ship')}>
+              <CheckCircle2 className="h-4 w-4" />
+              Gonderime Hazir
+              <Badge variant="secondary">{stats.readyToShip}</Badge>
+            </Button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -655,6 +720,7 @@ export default function CargoPage() {
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Alıcı</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kargo Şirketi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Hedef</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Olusturma Tarihi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Gönderim Tarihi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Depo</th>
                   <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Cihaz Sayısı</th>
@@ -676,7 +742,15 @@ export default function CargoPage() {
                     }`}
                   >
                     <td className="p-4 align-middle font-medium">
-                      {cargo.trackingNumber}
+                      <div className="flex items-center gap-2">
+                        <span>{cargo.trackingNumber}</span>
+                        {cargo.recordStatus === 'closed' ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <Lock className="h-3 w-3" />
+                            Kapali
+                          </Badge>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="p-4 align-middle">
                       <Badge variant="outline" className="gap-1">
@@ -720,12 +794,15 @@ export default function CargoPage() {
                       </div>
                     </td>
                     <td className="p-4 align-middle">
+                      {formatDate(cargo.createdAt)}
+                    </td>
+                    <td className="p-4 align-middle">
                       {cargo.sentDate ? formatDate(cargo.sentDate) : '-'}
                     </td>
                     <td className="p-4 align-middle">
                       {cargo.type === 'incoming' ? (
                         <Badge variant="secondary">
-                          {cargo.currentLocationName || 'Merkez Ofis Deposu'}
+                          {cargo.currentLocationName || 'Depoya Islenmemis'}
                         </Badge>
                       ) : (
                         '-'
@@ -733,77 +810,73 @@ export default function CargoPage() {
                     </td>
                     <td className="p-4 align-middle text-center">
                       <div className="flex flex-col items-center">
-                        <span>{cargo.devices.length}</span>
+                        <Badge variant="outline">{cargo.devices.length}</Badge>
                         {cargo.devices.some((d) => d.repairTicket) ? (
-                          <span className="text-[11px] text-muted-foreground">
-                            Tamirli: {cargo.devices.filter((d) => d.repairTicket?.status === 'closed').length} / Tamirde: {cargo.devices.filter((d) => d.repairTicket?.status === 'open').length}
-                          </span>
+                          <div className="mt-1 flex items-center gap-1">
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              Tamirli {cargo.devices.filter((d) => d.repairTicket?.status === 'closed').length}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              Tamirde {cargo.devices.filter((d) => d.repairTicket?.status === 'open').length}
+                            </Badge>
+                          </div>
                         ) : null}
                       </div>
                     </td>
                     <td className="p-4 align-middle">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/cargo/${cargo.id}`)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Görüntüle
-                        </Button>
-                        {cargo.type === 'incoming' && cargo.devices.length > 0 && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedCargo(cargo)
-                              setDispatchOpen(true)
-                            }}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8 gap-1">
+                            Islemler
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/cargo/${cargo.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Goruntule
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             disabled={cargo.recordStatus === 'closed'}
-                          >
-                            <ArrowRightLeft className="h-4 w-4 mr-1" />
-                            Sevk Et
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingCargo(cargo)
-                            setEditOpen(true)
-                          }}
-                          disabled={cargo.recordStatus === 'closed'}
-                        >
-                          <Pencil className="h-4 w-4 mr-1" />
-                          Düzenle
-                        </Button>
-                        {cargo.recordStatus === 'device_repair' && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
                             onClick={() => {
-                              setRepairTicketCargo(cargo)
-                              setRepairTicketOpen(true)
+                              setEditingCargo(cargo)
+                              setEditOpen(true)
                             }}
                           >
-                            Ticket Ac
-                          </Button>
-                        )}
-                        <Select
-                          value={cargo.recordStatus === 'ready_to_ship' ? 'open' : (cargo.recordStatus || 'open')}
-                          onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair') => handleUpdateRecordStatus(cargo.id, value as any)}
-                        >
-                          <SelectTrigger className="h-8 w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="open">Açık</SelectItem>
-                            <SelectItem value="on_hold">Beklemede</SelectItem>
-                            <SelectItem value="device_repair">Cihaz Tamiri</SelectItem>
-                            <SelectItem value="closed">Kapalı</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Duzenle
+                          </DropdownMenuItem>
+                          {cargo.type === 'incoming' && cargo.devices.length > 0 && (
+                            <DropdownMenuItem
+                              disabled={cargo.recordStatus === 'closed'}
+                              onClick={() => {
+                                setSelectedCargo(cargo)
+                                setDispatchOpen(true)
+                              }}
+                            >
+                              <ArrowRightLeft className="h-4 w-4 mr-2" />
+                              Sevk Et
+                            </DropdownMenuItem>
+                          )}
+                          {cargo.recordStatus === 'device_repair' && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setRepairTicketCargo(cargo)
+                                setRepairTicketOpen(true)
+                              }}
+                            >
+                              <Wrench className="h-4 w-4 mr-2" />
+                              Ticket Ac
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Kayit Durumu</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'open')}>Acik</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'on_hold')}>Beklemede</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'device_repair')}>Cihaz Tamiri</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'closed')}>Kapali</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}

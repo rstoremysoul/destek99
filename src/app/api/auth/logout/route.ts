@@ -1,21 +1,20 @@
 import { NextResponse } from 'next/server'
-import { serialize } from 'cookie'
+
+export const runtime = 'nodejs'
 
 export async function POST() {
-    const serialized = serialize('auth_token', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: -1,
-        path: '/',
-    })
+  const response = NextResponse.json(
+    { message: 'Cikis yapildi' },
+    { status: 200 }
+  )
 
-    const response = NextResponse.json(
-        { message: 'Çıkış yapıldı' },
-        { status: 200 }
-    )
+  response.cookies.set('auth_token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 0,
+    path: '/',
+  })
 
-    response.headers.set('Set-Cookie', serialized)
-
-    return response
+  return response
 }

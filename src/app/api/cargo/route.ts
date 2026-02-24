@@ -22,6 +22,14 @@ function isClosedRepairStatus(status: string) {
   return status === 'COMPLETED' || status === 'UNREPAIRABLE'
 }
 
+function parseCargoDeviceIdMarker(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const match = String(value || '').match(/\[CARGO_DEVICE:([^\]]+)\]/)
+    if (match?.[1]) return match[1]
+  }
+  return null
+}
+
 async function getHeadquartersLocation() {
   const hq = await prisma.location.findFirst({
     where: {
@@ -41,9 +49,6 @@ async function getHeadquartersLocation() {
 // GET all cargo trackings
 export async function GET(request: NextRequest) {
   try {
-    const headquarters = await getHeadquartersLocation()
-    const hqName = headquarters?.name || DEFAULT_HQ_NAME
-
     let cargos: any[] = []
     try {
       cargos = await (prisma.cargoTracking as any).findMany({
@@ -69,8 +74,8 @@ export async function GET(request: NextRequest) {
     }
 
     const enriched = await Promise.all(cargos.map(async (cargo) => {
-      // Varsayılan ofis ismi
-      let locationName = cargo.type === 'INCOMING' ? hqName : null;
+      // Varsayilan olarak depo bilgisi verme; sadece envanterde dogrulanmis lokasyon goster.
+      let locationName: string | null = null;
 
       // Eğer kargo cihaz içeriyorsa, bu cihazların güncel konumuna bakalım
       if (cargo.devices && cargo.devices.length > 0) {
@@ -102,13 +107,23 @@ export async function GET(request: NextRequest) {
           } else if (locations.size > 1) {
             locationName = 'Muhtelif / Dağıtılmış';
           }
-          // locations.size === 0 ise (henüz envantere girmemiş veya eşleşmemiş), varsayılanı koru
+          if (locations.size === 0 && cargo.type === 'INCOMING') {
+            locationName = 'Depoya Islenmemis';
+          }
+        } else if (cargo.type === 'INCOMING') {
+          locationName = 'Depoya Islenmemis';
         }
+      } else if (cargo.type === 'INCOMING') {
+        // Cihaz girisi olmayan gelen kayitlarda lokasyon envanterden dogrulanamaz.
+        locationName = 'Depoya Islenmemis';
       }
 
       const repairRows = await prisma.deviceRepair.findMany({
         where: {
-          repairNotes: { contains: `[CARGO:${cargo.id}]` },
+          OR: [
+            { repairNotes: { contains: `[CARGO:${cargo.id}]` } },
+            { diagnosisNotes: { contains: `[CARGO:${cargo.id}]` } },
+          ],
         },
         orderBy: { updatedAt: 'desc' },
         select: {
@@ -116,15 +131,15 @@ export async function GET(request: NextRequest) {
           repairNumber: true,
           status: true,
           repairNotes: true,
+          diagnosisNotes: true,
           updatedAt: true,
         },
       })
 
       const deviceRepairMap = new Map<string, { id: string; repairNumber: string; status: 'open' | 'closed'; state: string; updatedAt: Date }>()
       for (const row of repairRows) {
-        const match = row.repairNotes?.match(/\[CARGO_DEVICE:([^\]]+)\]/)
-        if (!match) continue
-        const cargoDeviceId = match[1]
+        const cargoDeviceId = parseCargoDeviceIdMarker(row.repairNotes, row.diagnosisNotes)
+        if (!cargoDeviceId) continue
         const status = isClosedRepairStatus(row.status) ? 'closed' : 'open'
         const existing = deviceRepairMap.get(cargoDeviceId)
         if (existing && existing.updatedAt > row.updatedAt) continue
@@ -359,17 +374,11 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 2. Process only predefined equivalent devices
+        // 2. Move equivalent inventory devices by explicit id or serial match.
         let movedEquivalentCount = 0
         let skippedNonEquivalentCount = 0
 
         for (const device of deviceList) {
-          const sourceType = String(device?.sourceType || '').toLowerCase()
-          if (sourceType !== 'equivalent') {
-            skippedNonEquivalentCount++
-            continue
-          }
-
           if (!device.serialNumber || device.serialNumber.length < 3) continue;
 
           let existingDevice = null

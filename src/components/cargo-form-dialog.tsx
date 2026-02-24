@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { CargoTracking } from '@/types'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Hash, Truck, Boxes, ClipboardList, User, UserRound, Warehouse, MapPin, CalendarClock, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface CargoFormDialogProps {
@@ -89,6 +89,14 @@ const DEFAULT_DEVICE_TYPES = [
   'OrderGo El Terminali',
 ]
 const DEFAULT_INCOMING_ADDRESS = 'Merkez Ofis Deposu'
+const DEPOT_LOCATION_TYPES = new Set([
+  'WAREHOUSE',
+  'HEADQUARTERS',
+  'BRANCH',
+  'TESTING',
+  'CONSIGNMENT',
+  'SUPPLIER',
+])
 
 const createEmptyDevice = (): DeviceFormData => ({
   sourceType: 'customer',
@@ -120,7 +128,7 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
 
   const [devices, setDevices] = useState<DeviceFormData[]>([createEmptyDevice()])
   const [companies, setCompanies] = useState<CargoCompany[]>([])
-  const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([])
+  const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string; type?: string | null }>>([])
   const [equivalentDevices, setEquivalentDevices] = useState<EquivalentDeviceOption[]>([])
   const [serialSuggestions, setSerialSuggestions] = useState<Record<number, LookupItem[]>>({})
   const [serialHistory, setSerialHistory] = useState<Record<number, LookupHistoryItem[]>>({})
@@ -147,6 +155,10 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
   const headquartersWarehouse = useMemo(
     () => warehouses.find((w) => /merkez|ofis/i.test(w.name)) || warehouses[0],
     [warehouses]
+  )
+  const selectedIncomingWarehouse = useMemo(
+    () => warehouses.find((w) => w.id === formData.targetLocationId) || headquartersWarehouse,
+    [warehouses, formData.targetLocationId, headquartersWarehouse]
   )
   const initialTrackingNumber = (initialData?.trackingNumber || '').trim()
 
@@ -207,7 +219,9 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
     fetch('/api/warehouses')
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) setWarehouses(data)
+        if (!Array.isArray(data)) return
+        const onlyDepots = data.filter((item: any) => DEPOT_LOCATION_TYPES.has(String(item?.type || '').toUpperCase()))
+        setWarehouses(onlyDepots)
       })
       .catch((err) => console.error('Failed to load warehouses', err))
 
@@ -305,7 +319,7 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
         ...prev,
         targetLocationId: headquartersWarehouse.id,
         destination: 'HEADQUARTERS',
-        destinationAddress: DEFAULT_INCOMING_ADDRESS,
+        destinationAddress: headquartersWarehouse.name || DEFAULT_INCOMING_ADDRESS,
       }
     })
   }, [open, formData.type, headquartersWarehouse?.id, headquartersWarehouse?.name])
@@ -515,7 +529,7 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
       sentDate: formData.sentDate ? new Date(formData.sentDate).toISOString() : new Date().toISOString(),
       destination: formData.type === 'INCOMING' ? 'HEADQUARTERS' : 'CUSTOMER',
       destinationAddress: formData.type === 'INCOMING'
-        ? DEFAULT_INCOMING_ADDRESS
+        ? (selectedIncomingWarehouse?.name || headquartersWarehouse?.name || DEFAULT_INCOMING_ADDRESS)
         : formData.destinationAddress,
       notes: formData.notes,
       targetLocationId: formData.type === 'INCOMING'
@@ -572,24 +586,33 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{mode === 'edit' ? 'Kargo Kaydi Duzenle' : 'Yeni Kargo Kaydi'}</DialogTitle>
+      <DialogContent className="max-w-7xl max-h-[92vh] overflow-y-auto border-t-4 border-t-orange-500 bg-[#f5f5f5]">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-2xl font-semibold">
+            {mode === 'edit' ? 'Servis Kaydini Duzenleyiniz' : 'Servis Kaydi Olusturunuz'}
+          </DialogTitle>
           <DialogDescription>
-            Muadil cihazlar icin listeden secim yapin. Musteri cihazlarini seri numarasi ile takip edin.
+            Kargo girisini tek ekrandan tamamlayin. Alanlar ekran yapisina gore yogun yerlesimde duzenlendi.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-md border bg-white/70 p-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-2">
               <Label>Takip Numarasi *</Label>
-              <Input
-                value={formData.trackingNumber}
-                onChange={(e) => setFormData({ ...formData, trackingNumber: e.target.value })}
-                placeholder="TK123456"
-                required
-              />
+              <div className="flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                  <Hash className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Input
+                  className="rounded-l-none"
+                  value={formData.trackingNumber}
+                  onChange={(e) => setFormData({ ...formData, trackingNumber: e.target.value })}
+                  placeholder="TK123456"
+                  required
+                />
+              </div>
               {trackingCheck.checking && (
                 <p className="text-xs text-muted-foreground">Takip numarasi kontrol ediliyor...</p>
               )}
@@ -602,28 +625,40 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
 
             <div className="space-y-2">
               <Label>Kargo Sirketi *</Label>
-              <Select value={formData.cargoCompany} onValueChange={(value) => setFormData({ ...formData, cargoCompany: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seciniz..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {loadingCompanies ? (
-                    <SelectItem value="loading" disabled>
-                      Yukleniyor...
-                    </SelectItem>
-                  ) : (
-                    mergedCompanies.map((companyName) => (
-                      <SelectItem key={companyName} value={companyName}>
-                        {companyName}
+              <div className="flex gap-1">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-muted">
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Select value={formData.cargoCompany} onValueChange={(value) => setFormData({ ...formData, cargoCompany: value })}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Seciniz..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingCompanies ? (
+                      <SelectItem value="loading" disabled>
+                        Yukleniyor...
                       </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                    ) : (
+                      mergedCompanies.map((companyName) => (
+                        <SelectItem key={companyName} value={companyName}>
+                          {companyName}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button type="button" size="icon" className="h-10 w-10 bg-pink-600 hover:bg-pink-700" onClick={() => window.open('/dashboard/settings', '_blank')}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label>Kargo Tipi *</Label>
+              <div className="flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                  <Boxes className="h-4 w-4 text-muted-foreground" />
+                </div>
               <Select
                 value={formData.type}
                 onValueChange={(value) =>
@@ -631,12 +666,15 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
                     ...prev,
                     type: value,
                     destination: value === 'INCOMING' ? 'HEADQUARTERS' : 'CUSTOMER',
-                    destinationAddress: value === 'INCOMING' ? DEFAULT_INCOMING_ADDRESS : prev.destinationAddress,
+                    destinationAddress:
+                      value === 'INCOMING'
+                        ? (headquartersWarehouse?.name || DEFAULT_INCOMING_ADDRESS)
+                        : prev.destinationAddress,
                     targetLocationId: value === 'INCOMING' ? (headquartersWarehouse?.id || prev.targetLocationId) : '',
                   }))
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="rounded-l-none">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -646,53 +684,131 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
                   <SelectItem value="INSTALLATION_TEAM">Kurulum Ekibi</SelectItem>
                 </SelectContent>
               </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label>Kayit Durumu *</Label>
-              <Select value={formData.recordStatus} onValueChange={(value) => setFormData({ ...formData, recordStatus: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="OPEN">Acik</SelectItem>
-                  <SelectItem value="ON_HOLD">Beklemede</SelectItem>
-                  <SelectItem value="DEVICE_REPAIR">Cihaz Tamiri</SelectItem>
-                  <SelectItem value="CLOSED">Kapali</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Select value={formData.recordStatus} onValueChange={(value) => setFormData({ ...formData, recordStatus: value })}>
+                  <SelectTrigger className="rounded-l-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPEN">Acik</SelectItem>
+                    <SelectItem value="ON_HOLD">Beklemede</SelectItem>
+                    <SelectItem value="DEVICE_REPAIR">Cihaz Tamiri</SelectItem>
+                    <SelectItem value="CLOSED">Kapali</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label>Gonderen *</Label>
-              <Input value={formData.sender} onChange={(e) => setFormData({ ...formData, sender: e.target.value })} required />
+              <div className="flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Input className="rounded-l-none" value={formData.sender} onChange={(e) => setFormData({ ...formData, sender: e.target.value })} required />
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label>Alici *</Label>
-              <Input value={formData.receiver} onChange={(e) => setFormData({ ...formData, receiver: e.target.value })} required />
+              <div className="flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                  <UserRound className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Input className="rounded-l-none" value={formData.receiver} onChange={(e) => setFormData({ ...formData, receiver: e.target.value })} required />
+              </div>
             </div>
 
             {formData.type === 'INCOMING' && (
               <div className="space-y-2">
-                <Label>Giris Lokasyonu</Label>
-                <Input value={headquartersWarehouse?.name || DEFAULT_INCOMING_ADDRESS} readOnly />
+                <Label>Depo *</Label>
+                <div className="flex">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                    <Warehouse className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                <Select
+                  value={formData.targetLocationId || headquartersWarehouse?.id || ''}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      targetLocationId: value,
+                      destination: 'HEADQUARTERS',
+                      destinationAddress: warehouses.find((w) => w.id === value)?.name || DEFAULT_INCOMING_ADDRESS,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="rounded-l-none">
+                    <SelectValue placeholder="Depo seciniz..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses.map((warehouse) => (
+                      <SelectItem key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                </div>
               </div>
             )}
 
             {formData.type !== 'INCOMING' && (
               <div className="space-y-2 md:col-span-2">
                 <Label>Teslimat Adresi *</Label>
-                <Textarea
-                  value={formData.destinationAddress}
-                  onChange={(e) => setFormData({ ...formData, destinationAddress: e.target.value })}
-                  required
-                />
+                <div className="flex">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <Textarea
+                    className="min-h-[40px] rounded-l-none"
+                    value={formData.destinationAddress}
+                    onChange={(e) => setFormData({ ...formData, destinationAddress: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
             )}
+            <div className="space-y-2">
+              <Label>Gonderim Tarihi</Label>
+              <div className="flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                  <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Input
+                  className="rounded-l-none"
+                  type="date"
+                  value={formData.sentDate}
+                  onChange={(e) => setFormData({ ...formData, sentDate: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 xl:col-span-3">
+              <Label>Diger Bilgiler</Label>
+              <div className="flex">
+                <div className="flex h-10 w-10 items-center justify-center rounded-l-md border border-r-0 bg-muted">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Input
+                  className="rounded-l-none"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Kisa aciklama, not veya servis bilgisi..."
+                />
+              </div>
+            </div>
+            </div>
           </div>
 
-          <div className="space-y-4 p-4 rounded-lg border">
+          <div className="space-y-4 rounded-md border bg-white/70 p-4">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Cihaz Listesi</h3>
               <div className="flex items-center gap-2">
@@ -906,9 +1022,13 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Notlar</Label>
-            <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
+          <div className="space-y-2 rounded-md border bg-white/70 p-4">
+            <Label>Detayli Notlar</Label>
+            <Textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Aksesuar, ariza aciklamasi, teslim veya ek notlar..."
+            />
           </div>
 
           <DialogFooter>

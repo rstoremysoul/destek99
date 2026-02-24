@@ -115,7 +115,7 @@ export async function POST(
             status: RepairStatus.RECEIVED,
             priority: Priority.MEDIUM,
             problemDescription: `Kargo cihaz tamiri ticketi (${cargo.trackingNumber})`,
-            diagnosisNotes: `Kargo Ticketi: ${cargo.trackingNumber}`,
+            diagnosisNotes: `${marker}\nKargo Ticketi: ${cargo.trackingNumber}`,
             repairNotes: `${marker}\nKaynak: Kargo Takibi\nTakip No: ${cargo.trackingNumber}\nCihaz: ${device.deviceName} / ${device.model}`,
             isWarranty: false,
             warrantyInfo: null,

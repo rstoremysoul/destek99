@@ -1,8 +1,16 @@
 {
-  "/login/page": "app/login/page.js",
-  "/dashboard/technical-service/page": "app/dashboard/technical-service/page.js",
-  "/dashboard/repairs/page": "app/dashboard/repairs/page.js",
+  "/api/installations/route": "app/api/installations/route.js",
+  "/api/repairs/route": "app/api/repairs/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/technicians/route": "app/api/technicians/route.js",
+  "/api/cargo/route": "app/api/cargo/route.js",
+  "/api/repairs/[id]/route": "app/api/repairs/[id]/route.js",
+  "/api/locations/route": "app/api/locations/route.js",
   "/dashboard/cargo/page": "app/dashboard/cargo/page.js",
-  "/dashboard/vendor-tracking/page": "app/dashboard/vendor-tracking/page.js",
-  "/dashboard/installations/page": "app/dashboard/installations/page.js"
+  "/dashboard/installations/page": "app/dashboard/installations/page.js",
+  "/dashboard/settings/page": "app/dashboard/settings/page.js",
+  "/dashboard/repairs/page": "app/dashboard/repairs/page.js",
+  "/dashboard/equivalent-devices/page": "app/dashboard/equivalent-devices/page.js",
+  "/dashboard/repairs/[id]/page": "app/dashboard/repairs/[id]/page.js",
+  "/dashboard/page": "app/dashboard/page.js"
 }

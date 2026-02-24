@@ -19,6 +19,14 @@ function isClosedRepairStatus(status: string) {
   return status === 'COMPLETED' || status === 'UNREPAIRABLE'
 }
 
+function parseCargoDeviceIdMarker(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const match = String(value || '').match(/\[CARGO_DEVICE:([^\]]+)\]/)
+    if (match?.[1]) return match[1]
+  }
+  return null
+}
+
 // GET single cargo by ID
 export async function GET(
   request: NextRequest,
@@ -41,7 +49,10 @@ export async function GET(
 
     const repairRows = await prisma.deviceRepair.findMany({
       where: {
-        repairNotes: { contains: `[CARGO:${cargo.id}]` },
+        OR: [
+          { repairNotes: { contains: `[CARGO:${cargo.id}]` } },
+          { diagnosisNotes: { contains: `[CARGO:${cargo.id}]` } },
+        ],
       },
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -49,15 +60,15 @@ export async function GET(
         repairNumber: true,
         status: true,
         repairNotes: true,
+        diagnosisNotes: true,
         updatedAt: true,
       },
     })
 
     const deviceRepairMap = new Map<string, { id: string; repairNumber: string; status: 'open' | 'closed'; state: string; updatedAt: Date }>()
     for (const row of repairRows) {
-      const match = row.repairNotes?.match(/\[CARGO_DEVICE:([^\]]+)\]/)
-      if (!match) continue
-      const cargoDeviceId = match[1]
+      const cargoDeviceId = parseCargoDeviceIdMarker(row.repairNotes, row.diagnosisNotes)
+      if (!cargoDeviceId) continue
       const status = isClosedRepairStatus(row.status) ? 'closed' : 'open'
       const existing = deviceRepairMap.get(cargoDeviceId)
       if (existing && existing.updatedAt > row.updatedAt) continue

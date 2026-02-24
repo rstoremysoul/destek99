@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { DeviceRepair } from '@/types'
-import { Plus, Search, Eye, Wrench, Calendar, CheckCircle, Clock, Shield, Lock } from 'lucide-react'
+import { Plus, Search, Eye, Wrench, Calendar, CheckCircle, Clock, Shield, Lock, Pencil, MoreVertical, XCircle } from 'lucide-react'
 import { RepairFormDialog } from '@/components/repair-form-dialog'
+import { toast } from 'sonner'
 
 const REPAIR_META_TAG = '[[REPAIR_TICKET_META]]'
 
@@ -54,6 +56,7 @@ export default function RepairsPage() {
   const [dateRangeStart, setDateRangeStart] = useState('')
   const [dateRangeEnd, setDateRangeEnd] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null)
   const router = useRouter()
 
   const recordsPerPage = 20
@@ -247,7 +250,14 @@ export default function RepairsPage() {
   }
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('tr-TR').format(date)
+    return new Intl.DateTimeFormat('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date)
   }
 
   const truncateText = (text: string, maxLength: number = 30) => {
@@ -275,6 +285,35 @@ export default function RepairsPage() {
     }
   }
 
+  const toggleRepairClosedState = async (repair: DeviceRepair) => {
+    try {
+      setStatusUpdatingId(repair.id)
+      const shouldClose = !isClosedRepair(repair.status)
+      const response = await fetch(`/api/repairs/${repair.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: shouldClose ? 'completed' : 'received',
+          completedDate: shouldClose ? new Date().toISOString() : null,
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        toast.error(err?.error || 'Durum guncellenemedi')
+        return
+      }
+
+      toast.success(shouldClose ? 'Kayit kapatildi' : 'Kayit acildi')
+      await fetchRepairs()
+    } catch (error) {
+      console.error('Error toggling repair state:', error)
+      toast.error('Durum guncellenemedi')
+    } finally {
+      setStatusUpdatingId(null)
+    }
+  }
+
   const stats = {
     total: repairs.length,
     received: repairs.filter(r => r.status === 'received').length,
@@ -287,6 +326,9 @@ export default function RepairsPage() {
              recordDate.getFullYear() === now.getFullYear()
     }).length,
   }
+  const unrepairableCount = repairs.filter(r => r.status === 'unrepairable').length
+  const waitingPartsCount = repairs.filter(r => r.status === 'waiting_parts').length
+  const testingCount = repairs.filter(r => r.status === 'testing').length
 
   if (loading) {
     return (
@@ -488,59 +530,90 @@ export default function RepairsPage() {
       </div>
 
       {/* İstatistik Kartları */}
-      <div className="grid gap-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Tamir</CardTitle>
-              <Wrench className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                Tüm tamir kayıtları
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Alınan</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.received}</div>
-              <p className="text-xs text-muted-foreground">
-                Alındı durumunda
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Devam Eden</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.ongoing}</div>
-              <p className="text-xs text-muted-foreground">
-                Tamir sürecinde
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tamamlanan</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.completed}</div>
-              <p className="text-xs text-muted-foreground">
-                Başarıyla tamamlanan
-              </p>
-            </CardContent>
-          </Card>
+      <div className="mb-6 space-y-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-md bg-amber-500 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">TAMIRDE OLANLAR</p>
+                <p className="text-2xl font-extrabold">{stats.ongoing} ADET</p>
+              </div>
+              <Wrench className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Aktif tamir sureci devam ediyor</div>
+          </div>
+          <div className="rounded-md bg-emerald-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">TAMAMLANANLAR</p>
+                <p className="text-2xl font-extrabold">{stats.completed} ADET</p>
+              </div>
+              <CheckCircle className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Onarimi biten ticketlar</div>
+          </div>
+          <div className="rounded-md bg-slate-900 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">ISLEME ALINANLAR</p>
+                <p className="text-2xl font-extrabold">{stats.received} ADET</p>
+              </div>
+              <Calendar className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Yeni alinan cihaz kayitlari</div>
+          </div>
+          <div className="rounded-md bg-red-500 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">TAMIR EDILEMEZ</p>
+                <p className="text-2xl font-extrabold">{unrepairableCount} ADET</p>
+              </div>
+              <XCircle className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Reddedilen veya iade edilenler</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-md bg-fuchsia-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">TOPLAM TAMIR</p>
+                <p className="text-2xl font-extrabold">{stats.total} ADET</p>
+              </div>
+              <Wrench className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Tum tamir ticket kayitlari</div>
+          </div>
+          <div className="rounded-md bg-cyan-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">BU AY</p>
+                <p className="text-2xl font-extrabold">{stats.thisMonth} ADET</p>
+              </div>
+              <Calendar className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Bu ay acilan kayitlar</div>
+          </div>
+          <div className="rounded-md bg-blue-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">PARCA BEKLEYEN</p>
+                <p className="text-2xl font-extrabold">{waitingPartsCount} ADET</p>
+              </div>
+              <Clock className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Parca tedarik asamasinda</div>
+          </div>
+          <div className="rounded-md bg-indigo-600 p-3 text-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold">TEST ASAMASI</p>
+                <p className="text-2xl font-extrabold">{testingCount} ADET</p>
+              </div>
+              <Search className="h-7 w-7" />
+            </div>
+            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Teslim oncesi test surecinde</div>
+          </div>
         </div>
       </div>
 
@@ -564,10 +637,10 @@ export default function RepairsPage() {
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Seri No</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Öncelik</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Olusturma Tarihi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Alınma Tarihi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Teknisyen</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Musteri Onayi</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Fiyatlar</th>
                   <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Islem</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Garanti</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">İşlemler</th>
@@ -584,7 +657,15 @@ export default function RepairsPage() {
                     }`}
                   >
                     <td className="p-4 align-middle font-medium">
-                      {repair.repairNumber}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{repair.repairNumber}</Badge>
+                        {isClosedRepair(repair.status) ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <Lock className="h-3 w-3" />
+                            Kapali
+                          </Badge>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="p-4 align-middle">
                       {truncateText(repair.companyName, 20)}
@@ -613,6 +694,9 @@ export default function RepairsPage() {
                       </Badge>
                     </td>
                     <td className="p-4 align-middle">
+                      {formatDate(repair.createdAt)}
+                    </td>
+                    <td className="p-4 align-middle">
                       {formatDate(repair.receivedDate)}
                     </td>
                     <td className="p-4 align-middle">
@@ -622,11 +706,6 @@ export default function RepairsPage() {
                       <Badge variant={getApprovalVariant(repair.customerApprovalStatus)}>
                         {getApprovalText(repair.customerApprovalStatus)}
                       </Badge>
-                    </td>
-                    <td className="p-4 align-middle text-xs">
-                      <div>Parca: {(repair.partsCost || 0).toFixed(2)} TL</div>
-                      <div>Distrib.: {(repair.distributorCost || 0).toFixed(2)} TL</div>
-                      <div className="font-medium">Musteri: {(repair.repairCost || 0).toFixed(2)} TL</div>
                     </td>
                     <td className="p-4 align-middle text-center">
                       <Badge variant="outline">{repair.operations?.length || 0}</Badge>
@@ -642,14 +721,30 @@ export default function RepairsPage() {
                       )}
                     </td>
                     <td className="p-4 align-middle">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/repairs/${repair.id}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Görüntüle
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8 gap-1">
+                            Islemler
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/repairs/${repair.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Goruntule
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/repairs/${repair.id}`)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Duzenle
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={statusUpdatingId === repair.id}
+                            onClick={() => toggleRepairClosedState(repair)}
+                          >
+                            {statusUpdatingId === repair.id ? 'Bekleyin...' : (isClosedRepair(repair.status) ? 'Ac' : 'Kapat')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}

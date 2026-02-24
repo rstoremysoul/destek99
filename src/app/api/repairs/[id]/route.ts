@@ -5,10 +5,14 @@ function isClosedRepairStatus(status: string | null | undefined) {
   return status === 'COMPLETED' || status === 'UNREPAIRABLE'
 }
 
-function extractCargoIdFromRepairNotes(notes?: string | null) {
-  if (!notes) return null
-  const match = notes.match(/\[CARGO:([^\]]+)\]/)
+function extractCargoIdFromText(value?: string | null) {
+  if (!value) return null
+  const match = value.match(/\[CARGO:([^\]]+)\]/)
   return match ? match[1] : null
+}
+
+function extractCargoIdFromRepair(repairNotes?: string | null, diagnosisNotes?: string | null) {
+  return extractCargoIdFromText(repairNotes) || extractCargoIdFromText(diagnosisNotes)
 }
 
 // GET single repair by ID
@@ -73,11 +77,14 @@ export async function PATCH(
       },
     })
 
-    const cargoId = extractCargoIdFromRepairNotes(repair.repairNotes)
+    const cargoId = extractCargoIdFromRepair(repair.repairNotes, repair.diagnosisNotes)
     if (cargoId) {
       const linkedRepairs = await prisma.deviceRepair.findMany({
         where: {
-          repairNotes: { contains: `[CARGO:${cargoId}]` },
+          OR: [
+            { repairNotes: { contains: `[CARGO:${cargoId}]` } },
+            { diagnosisNotes: { contains: `[CARGO:${cargoId}]` } },
+          ],
         },
         select: {
           status: true,
