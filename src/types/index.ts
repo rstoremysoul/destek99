@@ -127,6 +127,14 @@ export interface CargoTracking {
   sentDate?: Date
   deliveredDate?: Date
   currentLocationName?: string | null
+  vendorTracking?: {
+    vendorId?: string
+    vendorName: string
+    vendorProductIds: string[]
+    targetLocationId: string
+    targetLocationName: string
+    transferredAt: string
+  } | null
   devices: CargoDevice[]
   destination: 'customer' | 'distributor' | 'branch' | 'headquarters'
   destinationAddress: string
@@ -306,6 +314,12 @@ export interface VendorProduct {
   isPaidByVendor: boolean
   statusHistory: ProductStatusHistory[]
   notes?: string
+  workflow?: {
+    stage: 'technical_service'
+    repairId: string
+    repairNumber: string
+    transferredAt: string
+  } | null
   createdAt: Date
   updatedAt: Date
 }

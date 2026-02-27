@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '../../../lib/db'
 import { VendorProductStatus } from '@prisma/client'
+import { parseVendorWorkflowMeta } from '@/lib/vendor-workflow'
 
 export async function GET(request: NextRequest) {
   try {
@@ -108,6 +109,23 @@ export async function PUT(request: NextRequest) {
       'returned': VendorProductStatus.RETURNED,
     }
 
+    const nextStatus = statusMap[data.status?.toLowerCase()] || data.currentStatus
+    const statusText = String(nextStatus || '').toUpperCase()
+    if (statusText === 'COMPLETED') {
+      const existing = await db.vendorProduct.findUnique({
+        where: { id: String(id) },
+        select: { notes: true },
+      })
+      const notesCandidate = typeof data.notes === 'string' ? data.notes : (existing?.notes || '')
+      const workflow = parseVendorWorkflowMeta(notesCandidate)
+      if (!workflow.meta?.repairId) {
+        return NextResponse.json(
+          { error: 'Tedarikci kaydi teknik servise cekilmeden tamamlanamaz' },
+          { status: 400 }
+        )
+      }
+    }
+
     const product = await db.vendorProduct.update({
       where: { id: String(id) },
       data: {
@@ -117,7 +135,7 @@ export async function PUT(request: NextRequest) {
         serialNumber: data.serialNumber,
         brand: data.brand,
         problemDescription: data.problemDescription,
-        currentStatus: statusMap[data.status?.toLowerCase()] || data.currentStatus,
+        currentStatus: nextStatus,
         sentDate: data.sentDate ? new Date(data.sentDate) : null,
         receivedDate: data.receivedDate ? new Date(data.receivedDate) : null,
         estimatedReturn: data.estimatedReturn ? new Date(data.estimatedReturn) : null,

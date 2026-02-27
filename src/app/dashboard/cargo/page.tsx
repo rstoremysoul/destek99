@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CargoTracking } from '@/types'
 import { Plus, Search, Eye, Truck, Package, ArrowUp, ArrowDown, MapPin, ArrowRightLeft, Pencil, Lock, PauseCircle, CheckCircle2, Wrench, FolderOpen, XCircle, Clock3, MoreVertical } from 'lucide-react'
@@ -15,12 +16,15 @@ import { CargoFormDialog } from '@/components/cargo-form-dialog'
 import { CargoDispatchDialog } from '@/components/cargo-dispatch-dialog'
 import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
 import { toast } from 'sonner'
+import { parseCargoVendorMeta } from '@/lib/cargo-vendor-workflow'
 
 export default function CargoPage() {
   const [cargos, setCargos] = useState<CargoTracking[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [createCargoType, setCreateCargoType] = useState<'INCOMING' | 'OUTGOING'>('OUTGOING')
+  const [cargoViewTab, setCargoViewTab] = useState<'incoming' | 'outgoing'>('incoming')
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [recordStatusFilter, setRecordStatusFilter] = useState<'open' | 'on_hold' | 'closed' | 'device_repair' | 'ready_to_ship' | 'all'>('all')
@@ -48,13 +52,25 @@ export default function CargoPage() {
     setCurrentPage(1)
   }, [searchTerm, typeFilter, statusFilter, recordStatusFilter, destinationFilter, dateFilter, dateRangeStart, dateRangeEnd])
 
+  useEffect(() => {
+    setTypeFilter(cargoViewTab)
+  }, [cargoViewTab])
+
+  const openCreateCargoDialog = (type: 'INCOMING' | 'OUTGOING') => {
+    setCreateCargoType(type)
+    setIsFormOpen(true)
+  }
+
   const fetchCargos = async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/cargo')
       if (response.ok) {
         const data = await response.json()
-          const mappedData = data.map((item: any) => ({
+          const mappedData = data.map((item: any) => {
+            const vendorMeta = parseCargoVendorMeta(item.notes)
+            return {
+            vendorTracking: vendorMeta.meta,
             id: item.id,
             trackingNumber: item.trackingNumber,
             type: item.type.toLowerCase(),
@@ -68,7 +84,7 @@ export default function CargoPage() {
             currentLocationName: item.currentLocationName || null,
             destination: item.destination.toLowerCase(),
             destinationAddress: item.destinationAddress,
-            notes: item.notes,
+            notes: vendorMeta.notesWithoutMeta,
             devices: item.devices.map((d: any) => ({
               id: d.id,
               deviceName: d.deviceName,
@@ -92,7 +108,8 @@ export default function CargoPage() {
             })),
           createdAt: new Date(item.createdAt),
           updatedAt: new Date(item.updatedAt),
-        }))
+        }
+      })
         setCargos(mappedData)
       }
     } catch (error) {
@@ -101,9 +118,6 @@ export default function CargoPage() {
       setLoading(false)
     }
   }
-
-  // Benzersiz kargo şirketleri listesi
-  const uniqueCompanies = Array.from(new Set(cargos.map(c => c.cargoCompany))).sort()
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -147,6 +161,9 @@ export default function CargoPage() {
       default: return 'Açık'
     }
   }
+
+  const isTechnicalServiceOutgoing = (cargo: CargoTracking) =>
+    cargo.type === 'outgoing' && String(cargo.notes || '').includes('[AUTO_OUTGOING_FROM_REPAIR:')
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('tr-TR', {
@@ -382,6 +399,31 @@ export default function CargoPage() {
         </p>
       </div>
 
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Tabs value={cargoViewTab} onValueChange={(value) => setCargoViewTab(value as 'incoming' | 'outgoing')}>
+          <TabsList>
+            <TabsTrigger value="incoming" className="gap-2">
+              <ArrowDown className="h-4 w-4" />
+              Gelen Kargo
+            </TabsTrigger>
+            <TabsTrigger value="outgoing" className="gap-2">
+              <ArrowUp className="h-4 w-4" />
+              Giden Kargo
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => openCreateCargoDialog('INCOMING')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Yeni Gelen Kargo Girisi
+          </Button>
+          <Button onClick={() => openCreateCargoDialog('OUTGOING')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Yeni Giden Kargo Girisi
+          </Button>
+        </div>
+      </div>
+
       {/* Arama ve Filtreler */}
       <div className="space-y-4 mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
@@ -396,25 +438,10 @@ export default function CargoPage() {
               className="pl-8"
             />
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Yeni Kargo
-          </Button>
         </div>
 
         {/* Filtre Satırı */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Kargo Tipi" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tüm Tipler</SelectItem>
-              <SelectItem value="incoming">Gelen</SelectItem>
-              <SelectItem value="outgoing">Giden</SelectItem>
-            </SelectContent>
-          </Select>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger>
               <SelectValue placeholder="Durum Filtresi" />
@@ -515,14 +542,9 @@ export default function CargoPage() {
         )}
 
         {/* Aktif Filtreler */}
-        {(typeFilter !== 'all' || statusFilter !== 'all' || recordStatusFilter !== 'all' || destinationFilter !== 'all' || dateFilter !== 'all') && (
+        {(statusFilter !== 'all' || recordStatusFilter !== 'all' || destinationFilter !== 'all' || dateFilter !== 'all') && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Aktif Filtreler:</span>
-            {typeFilter !== 'all' && (
-              <Badge variant="secondary" className="cursor-pointer" onClick={() => setTypeFilter('all')}>
-                Tip: {typeFilter === 'incoming' ? 'Gelen' : 'Giden'} ✕
-              </Badge>
-            )}
             {statusFilter !== 'all' && (
               <Badge variant="secondary" className="cursor-pointer" onClick={() => setStatusFilter('all')}>
                 Durum: {getStatusText(statusFilter)} ✕
@@ -565,7 +587,6 @@ export default function CargoPage() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                setTypeFilter('all')
                 setStatusFilter('all')
                 setRecordStatusFilter('all')
                 setDestinationFilter('all')
@@ -679,23 +700,17 @@ export default function CargoPage() {
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setIsFormOpen(true)}>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => openCreateCargoDialog('INCOMING')}>
               <Plus className="h-4 w-4" />
-              Yeni Kargo
+              Yeni Gelen Kargo
             </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => { setRecordStatusFilter('open'); setTypeFilter('all') }}>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => openCreateCargoDialog('OUTGOING')}>
+              <Plus className="h-4 w-4" />
+              Yeni Giden Kargo
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => { setRecordStatusFilter('open'); setTypeFilter(cargoViewTab) }}>
               <FolderOpen className="h-4 w-4" />
               Acik Kayitlar
-            </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setTypeFilter('incoming')}>
-              <ArrowDown className="h-4 w-4" />
-              Gelen
-              <Badge variant="secondary">{stats.incoming}</Badge>
-            </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setTypeFilter('outgoing')}>
-              <ArrowUp className="h-4 w-4" />
-              Giden
-              <Badge variant="secondary">{stats.outgoing}</Badge>
             </Button>
             <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setRecordStatusFilter('device_repair')}>
               <Wrench className="h-4 w-4" />
@@ -748,6 +763,16 @@ export default function CargoPage() {
                           <Badge variant="secondary" className="gap-1">
                             <Lock className="h-3 w-3" />
                             Kapali
+                          </Badge>
+                        ) : null}
+                        {cargo.vendorTracking ? (
+                          <Badge variant="outline" className="gap-1">
+                            Tedarikci Takibinde
+                          </Badge>
+                        ) : null}
+                        {isTechnicalServiceOutgoing(cargo) ? (
+                          <Badge variant="outline" className="gap-1">
+                            Kaynak: Teknik Servis
                           </Badge>
                         ) : null}
                       </div>
@@ -869,6 +894,12 @@ export default function CargoPage() {
                               Ticket Ac
                             </DropdownMenuItem>
                           )}
+                          {cargo.vendorTracking?.vendorProductIds?.[0] ? (
+                            <DropdownMenuItem onClick={() => router.push(`/dashboard/vendor-tracking/${cargo.vendorTracking?.vendorProductIds?.[0]}`)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Tedarikci Kaydina Git
+                            </DropdownMenuItem>
+                          ) : null}
                           <DropdownMenuSeparator />
                           <DropdownMenuLabel>Kayit Durumu</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'open')}>Acik</DropdownMenuItem>
@@ -928,6 +959,7 @@ export default function CargoPage() {
         onOpenChange={setIsFormOpen}
         onSubmit={handleAddCargo}
         mode="create"
+        defaultType={createCargoType}
       />
 
       {/* Düzenleme Dialog */}

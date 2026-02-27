@@ -17,6 +17,7 @@ interface CargoFormDialogProps {
   onSubmit: (cargo: Partial<CargoTracking>) => Promise<boolean | void> | boolean | void
   initialData?: CargoTracking | null
   mode?: 'create' | 'edit'
+  defaultType?: 'INCOMING' | 'OUTGOING'
 }
 
 type DeviceSourceType = 'equivalent' | 'customer' | 'other'
@@ -111,7 +112,14 @@ const createEmptyDevice = (): DeviceFormData => ({
   customerCompanyName: '',
 })
 
-export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mode = 'create' }: CargoFormDialogProps) {
+export function CargoFormDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  initialData,
+  mode = 'create',
+  defaultType = 'OUTGOING',
+}: CargoFormDialogProps) {
   const [formData, setFormData] = useState({
     trackingNumber: '',
     type: 'OUTGOING' as string,
@@ -297,14 +305,22 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
         setDevices([createEmptyDevice()])
       }
     } else {
+      const nextType = defaultType === 'INCOMING' ? 'INCOMING' : 'OUTGOING'
       setFormData((prev) => ({
         ...prev,
+        type: nextType,
+        destination: nextType === 'INCOMING' ? 'HEADQUARTERS' : 'CUSTOMER',
+        destinationAddress:
+          nextType === 'INCOMING'
+            ? (headquartersWarehouse?.name || DEFAULT_INCOMING_ADDRESS)
+            : '',
+        targetLocationId: nextType === 'INCOMING' ? (headquartersWarehouse?.id || '') : '',
         sentDate: prev.sentDate || new Date().toISOString().split('T')[0],
       }))
       setDevices([createEmptyDevice()])
       setSerialHistory({})
     }
-  }, [open, initialData])
+  }, [open, initialData, defaultType, headquartersWarehouse?.id, headquartersWarehouse?.name])
 
   useEffect(() => {
     if (!open) return
@@ -564,16 +580,19 @@ export function CargoFormDialog({ open, onOpenChange, onSubmit, initialData, mod
     if (mode === 'create') {
       setFormData({
         trackingNumber: '',
-        type: 'OUTGOING',
+        type: defaultType === 'INCOMING' ? 'INCOMING' : 'OUTGOING',
         recordStatus: 'OPEN',
         sender: '',
         receiver: '',
         cargoCompany: '',
-        destination: 'CUSTOMER',
-        destinationAddress: '',
+        destination: defaultType === 'INCOMING' ? 'HEADQUARTERS' : 'CUSTOMER',
+        destinationAddress:
+          defaultType === 'INCOMING'
+            ? (headquartersWarehouse?.name || DEFAULT_INCOMING_ADDRESS)
+            : '',
         sentDate: new Date().toISOString().split('T')[0],
         notes: '',
-        targetLocationId: headquartersWarehouse?.id || '',
+        targetLocationId: defaultType === 'INCOMING' ? (headquartersWarehouse?.id || '') : '',
       })
       setDevices([createEmptyDevice()])
       setSerialSuggestions({})

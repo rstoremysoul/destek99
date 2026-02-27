@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "workflow:smoke": "node scripts/workflow-api-smoke.mjs",
     "cf:build": "npx @opennextjs/cloudflare build",
     "cf:preview": "npx @opennextjs/cloudflare preview",
     "cf:deploy": "npx @opennextjs/cloudflare deploy"

@@ -1,5 +1,6 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
+import { parseVendorWorkflowMeta } from '@/lib/vendor-workflow'
 
 // GET single vendor product by ID
 export async function GET(
@@ -43,6 +44,22 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json()
+    const nextStatus = String(body.currentStatus || '').toUpperCase()
+
+    if (nextStatus === 'COMPLETED') {
+      const existing = await prisma.vendorProduct.findUnique({
+        where: { id: params.id },
+        select: { notes: true },
+      })
+      const notesCandidate = typeof body.notes === 'string' ? body.notes : (existing?.notes || '')
+      const workflow = parseVendorWorkflowMeta(notesCandidate)
+      if (!workflow.meta?.repairId) {
+        return NextResponse.json(
+          { error: 'Tedarikci kaydi teknik servise cekilmeden tamamlanamaz' },
+          { status: 400 }
+        )
+      }
+    }
 
     const product = await prisma.vendorProduct.update({
       where: { id: params.id },
@@ -92,4 +109,3 @@ export async function DELETE(
     )
   }
 }
-

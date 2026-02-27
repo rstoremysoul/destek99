@@ -14,8 +14,11 @@ import {
   Calendar,
   DollarSign,
   FileText,
-  History
+  History,
+  Wrench
 } from 'lucide-react'
+import { parseVendorWorkflowMeta } from '@/lib/vendor-workflow'
+import { toast } from 'sonner'
 
 interface PageProps {
   params: { id: string }
@@ -24,6 +27,7 @@ interface PageProps {
 export default function VendorProductDetailPage({ params }: PageProps) {
   const [product, setProduct] = useState<VendorProduct | null>(null)
   const [loading, setLoading] = useState(true)
+  const [moving, setMoving] = useState(false)
   const router = useRouter()
 
   const fetchProduct = useCallback(async () => {
@@ -32,6 +36,7 @@ export default function VendorProductDetailPage({ params }: PageProps) {
       const response = await fetch(`/api/vendor-tracking/${params.id}`)
       if (response.ok) {
         const data = await response.json()
+        const workflow = parseVendorWorkflowMeta(data.notes)
         // Map database format to component format
         const mappedData: VendorProduct = {
           id: data.id,
@@ -59,7 +64,8 @@ export default function VendorProductDetailPage({ params }: PageProps) {
             updatedBy: h.updatedBy,
             updatedByName: h.updatedByName,
           })),
-          notes: data.notes,
+          notes: workflow.notesWithoutMeta,
+          workflow: workflow.meta,
           createdAt: new Date(data.createdAt),
           updatedAt: new Date(data.updatedAt),
         }
@@ -77,6 +83,28 @@ export default function VendorProductDetailPage({ params }: PageProps) {
   useEffect(() => {
     fetchProduct()
   }, [fetchProduct])
+
+  const handleMoveToTechnicalService = async () => {
+    if (!product || moving || product.workflow?.repairId || product.currentStatus === 'completed') return
+    try {
+      setMoving(true)
+      const response = await fetch(`/api/vendor-tracking/${product.id}/move-to-repair`, {
+        method: 'POST',
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        toast.error(data?.error || 'Kayit teknik servise tasinamadi')
+        return
+      }
+      toast.success(`Kayit teknik servise tasindi (${data?.repairNumber || ''})`)
+      await fetchProduct()
+    } catch (error) {
+      console.error('Error moving vendor product to technical service:', error)
+      toast.error('Kayit teknik servise tasinamadi')
+    } finally {
+      setMoving(false)
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -150,9 +178,31 @@ export default function VendorProductDetailPage({ params }: PageProps) {
             </p>
           </div>
 
-          <Badge variant={getStatusColor(product.currentStatus)} className="text-sm py-1">
-            {getStatusText(product.currentStatus)}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={getStatusColor(product.currentStatus)} className="text-sm py-1">
+              {getStatusText(product.currentStatus)}
+            </Badge>
+            {product.workflow?.repairId ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/dashboard/repairs/${product.workflow?.repairId}`)}
+              >
+                <Wrench className="mr-2 h-4 w-4" />
+                Teknik Servis Ticketi
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={moving || product.currentStatus === 'completed'}
+                onClick={handleMoveToTechnicalService}
+              >
+                <Wrench className="mr-2 h-4 w-4" />
+                Teknik Servise Cek
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ArrowLeft, Save, Loader2 } from 'lucide-react'
+import { ArrowLeft, Save, Loader2, Truck } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface PageProps {
@@ -146,6 +146,8 @@ export default function RepairDetailPage({ params }: PageProps) {
     approvalNote: '',
     cargoId: '',
     cargoTrackingNumber: '',
+    outgoingCargoId: '',
+    outgoingCargoTrackingNumber: '',
   })
 
   const totalCostPreview = useMemo(() => {
@@ -202,6 +204,8 @@ export default function RepairDetailPage({ params }: PageProps) {
         approvalNote: parsed.meta.approvalNote || '',
         cargoId: cargoInfo.cargoId || '',
         cargoTrackingNumber: cargoInfo.trackingNumber || '',
+        outgoingCargoId: data.relatedOutgoingCargo?.id || '',
+        outgoingCargoTrackingNumber: data.relatedOutgoingCargo?.trackingNumber || '',
       })
     } catch (error) {
       console.error('Error fetching repair detail:', error)
@@ -377,6 +381,21 @@ export default function RepairDetailPage({ params }: PageProps) {
           <div>
             <Label>Musteri</Label>
             <Input value={form.customerName} onChange={(e) => setField('customerName', e.target.value)} />
+          </div>
+          <div>
+            <Label>Otomatik Giden Kargo</Label>
+            <div className="text-sm mt-1">
+              {form.outgoingCargoTrackingNumber ? (
+                <Button
+                  variant="link"
+                  className="h-auto p-0"
+                  onClick={() => router.push(form.outgoingCargoId ? `/dashboard/cargo/${form.outgoingCargoId}` : '/dashboard/cargo')}
+                >
+                  <Truck className="mr-2 h-4 w-4" />
+                  {form.outgoingCargoTrackingNumber}
+                </Button>
+              ) : '-'}
+            </div>
           </div>
         </CardContent>
       </Card>

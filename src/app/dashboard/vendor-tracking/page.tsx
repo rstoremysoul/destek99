@@ -9,9 +9,11 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Vendor, VendorProduct } from '@/types'
-import { Plus, Search, Eye, Package, Clock, CheckCircle, Building2, Calendar, AlertCircle } from 'lucide-react'
+import { Plus, Search, Eye, Package, Clock, CheckCircle, Building2, Calendar, AlertCircle, Wrench } from 'lucide-react'
 import { VendorFormDialog } from '@/components/vendor-form-dialog'
 import { VendorProductFormDialog } from '@/components/vendor-product-form-dialog'
+import { toast } from 'sonner'
+import { parseVendorWorkflowMeta } from '@/lib/vendor-workflow'
 
 export default function VendorTrackingPage() {
   const [vendors, setVendors] = useState<Vendor[]>([])
@@ -26,6 +28,7 @@ export default function VendorTrackingPage() {
   const [dateRangeStart, setDateRangeStart] = useState('')
   const [dateRangeEnd, setDateRangeEnd] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [movingProductId, setMovingProductId] = useState<string | null>(null)
   const router = useRouter()
 
   const recordsPerPage = 20
@@ -51,6 +54,7 @@ export default function VendorTrackingPage() {
       const data = await response.json()
       // Map API data to VendorProduct format
       const mappedProducts = data.map((item: any) => ({
+        workflow: parseVendorWorkflowMeta(item.notes).meta,
         id: item.id,
         vendorId: item.vendorId,
         vendorName: item.vendor?.name || '',
@@ -69,7 +73,7 @@ export default function VendorTrackingPage() {
         cost: item.cost,
         isPaidByVendor: false,
         statusHistory: [],
-        notes: item.notes,
+        notes: parseVendorWorkflowMeta(item.notes).notesWithoutMeta,
         createdAt: new Date(item.createdAt),
         updatedAt: new Date(item.updatedAt),
       }))
@@ -216,6 +220,32 @@ export default function VendorTrackingPage() {
       }
     } catch (error) {
       console.error('Error adding product:', error)
+    }
+  }
+
+  const handleMoveToTechnicalService = async (product: VendorProduct) => {
+    if (movingProductId) return
+    try {
+      setMovingProductId(product.id)
+      const response = await fetch(`/api/vendor-tracking/${product.id}/move-to-repair`, {
+        method: 'POST',
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        toast.error(data?.error || 'Kayit teknik servise tasinamadi')
+        return
+      }
+
+      const message = data?.alreadyMoved
+        ? `Kayit zaten teknik serviste (${data.repairNumber})`
+        : `Kayit teknik servise tasindi (${data.repairNumber})`
+      toast.success(message)
+      await fetchProducts()
+    } catch (error) {
+      console.error('Error moving vendor product to technical service:', error)
+      toast.error('Kayit teknik servise tasinamadi')
+    } finally {
+      setMovingProductId(null)
     }
   }
 
@@ -523,14 +553,25 @@ export default function VendorTrackingPage() {
                         : '-'}
                     </td>
                     <td className="p-4 align-middle">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/vendor-tracking/${product.id}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Görüntüle
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/vendor-tracking/${product.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Görüntüle
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={movingProductId === product.id || product.currentStatus === 'completed' || !!product.workflow?.repairId}
+                          onClick={() => handleMoveToTechnicalService(product)}
+                        >
+                          <Wrench className="h-4 w-4 mr-2" />
+                          {product.workflow?.repairId ? 'Teknik Serviste' : 'Teknik Servise Cek'}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

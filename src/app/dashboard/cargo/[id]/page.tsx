@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
+import { parseCargoVendorMeta } from '@/lib/cargo-vendor-workflow'
 
 interface PageProps {
   params: { id: string }
@@ -40,6 +41,7 @@ export default function CargoDetailPage({ params }: PageProps) {
       const response = await fetch(`/api/cargo/${params.id}`)
       if (response.ok) {
         const data = await response.json()
+        const vendorMeta = parseCargoVendorMeta(data.notes)
         // Map database format to component format
         const mappedData: CargoTracking = {
           id: data.id,
@@ -54,7 +56,8 @@ export default function CargoDetailPage({ params }: PageProps) {
           deliveredDate: data.deliveredDate ? new Date(data.deliveredDate) : undefined,
           destination: data.destination.toLowerCase(),
           destinationAddress: data.destinationAddress,
-          notes: data.notes,
+          notes: vendorMeta.notesWithoutMeta,
+          vendorTracking: vendorMeta.meta,
           devices: data.devices.map((d: any) => ({
             id: d.id,
             deviceName: d.deviceName,
@@ -220,6 +223,9 @@ export default function CargoDetailPage({ params }: PageProps) {
     }).format(date)
   }
 
+  const isTechnicalServiceOutgoing =
+    cargo.type === 'outgoing' && String(cargo.notes || '').includes('[AUTO_OUTGOING_FROM_REPAIR:')
+
   return (
     <div className="container mx-auto py-6">
       {/* Header */}
@@ -255,6 +261,20 @@ export default function CargoDetailPage({ params }: PageProps) {
             <Badge variant="outline" className="text-sm py-1">
               {cargo.type === 'incoming' ? 'Gelen' : 'Giden'}
             </Badge>
+            {isTechnicalServiceOutgoing ? (
+              <Badge variant="outline" className="text-sm py-1">
+                Kaynak: Teknik Servis
+              </Badge>
+            ) : null}
+            {cargo.vendorTracking?.vendorProductIds?.[0] ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/dashboard/vendor-tracking/${cargo.vendorTracking?.vendorProductIds?.[0]}`)}
+              >
+                Tedarikci Takibinde
+              </Button>
+            ) : null}
                     <Select
               value={cargo.recordStatus === 'ready_to_ship' ? 'open' : (cargo.recordStatus || 'open')}
               onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair') => handleRecordStatusChange(value)}
@@ -373,6 +393,14 @@ export default function CargoDetailPage({ params }: PageProps) {
                   <p className="font-medium whitespace-pre-wrap">{cargo.notes}</p>
                 </div>
               )}
+              {cargo.vendorTracking ? (
+                <div>
+                  <p className="text-sm text-muted-foreground">Workflow</p>
+                  <p className="font-medium">
+                    Kayit tedarikci takibine devredildi ({cargo.vendorTracking.vendorName})
+                  </p>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>

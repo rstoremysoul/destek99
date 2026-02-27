@@ -26,35 +26,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/layout.js"
     ],
-    "/dashboard/installations/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/installations/page.js"
-    ],
     "/dashboard/cargo/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/cargo/page.js"
-    ],
-    "/dashboard/repairs/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/repairs/page.js"
-    ],
-    "/dashboard/settings/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/settings/page.js"
     ],
     "/dashboard/equivalent-devices/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/equivalent-devices/page.js"
     ],
-    "/dashboard/repairs/[id]/page": [
+    "/dashboard/technical-service/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/repairs/[id]/page.js"
+      "static/chunks/app/dashboard/technical-service/page.js"
+    ],
+    "/dashboard/vendor-tracking/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/vendor-tracking/page.js"
     ]
   }
 }

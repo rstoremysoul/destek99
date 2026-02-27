@@ -210,7 +210,7 @@ export async function PATCH(
     const updated = await prisma.$transaction(async (tx) => {
       const currentCargo = await tx.cargoTracking.findUnique({
         where: { id: params.id },
-        select: { notes: true },
+        select: { notes: true, type: true, status: true },
       })
       let nextNotes = typeof cargoData.notes === 'string' ? cargoData.notes : currentCargo?.notes
       const updateData: Record<string, any> = {
@@ -247,6 +247,12 @@ export async function PATCH(
             status: nextRecordStatus === 'closed' ? 'completed' : 'pending',
           })
         }
+      }
+
+      const resolvedType = String(updateData.type || currentCargo?.type || '').toUpperCase()
+      const resolvedStatus = String(updateData.status || currentCargo?.status || '').toUpperCase()
+      if (resolvedType === 'OUTGOING' && resolvedStatus === 'DELIVERED') {
+        updateData.recordStatus = 'CLOSED'
       }
 
       let cargo
