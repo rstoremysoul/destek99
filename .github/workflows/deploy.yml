@@ -1,0 +1,40 @@
+name: Deploy (destek99)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "\
+            set -e; \
+            cd /var/www/destek99; \
+            echo '--- git pull'; \
+            git fetch --all; \
+            git checkout main; \
+            git pull origin main; \
+            echo '--- install deps'; \
+            npm ci || npm install; \
+            echo '--- prisma generate'; \
+            npx prisma generate; \
+            echo '--- build'; \
+            npm run build; \
+            echo '--- restart pm2'; \
+            pm2 restart destek99 --update-env; \
+            pm2 save; \
+            pm2 ls \
+          "
