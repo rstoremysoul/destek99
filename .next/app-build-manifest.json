@@ -11,40 +11,30 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/login/page": [
+    "/dashboard/cargo-incoming/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/login/page.js"
-    ],
-    "/dashboard/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/page.js"
+      "static/chunks/app/dashboard/cargo-incoming/page.js"
     ],
     "/dashboard/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/layout.js"
     ],
-    "/dashboard/cargo/page": [
+    "/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/cargo/page.js"
+      "static/chunks/app/dashboard/page.js"
     ],
-    "/dashboard/equivalent-devices/page": [
+    "/dashboard/settings/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/equivalent-devices/page.js"
+      "static/chunks/app/dashboard/settings/page.js"
     ],
-    "/dashboard/technical-service/page": [
+    "/dashboard/warehouses/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/technical-service/page.js"
-    ],
-    "/dashboard/vendor-tracking/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/vendor-tracking/page.js"
+      "static/chunks/app/dashboard/warehouses/page.js"
     ]
   }
 }

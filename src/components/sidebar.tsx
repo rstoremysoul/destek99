@@ -35,7 +35,8 @@ const navigation = [
     icon: HardDrive,
     children: [
       { name: 'Kurulum Formları', href: '/dashboard/installations', icon: Package },
-      { name: 'Kargo Takibi', href: '/dashboard/cargo', icon: Truck },
+      { name: 'Kargo Takibi Gelen', href: '/dashboard/cargo-incoming', icon: Truck },
+      { name: 'Kargo Takibi Giden', href: '/dashboard/cargo-outgoing', icon: Truck },
       { name: 'Cihaz Tamiri', href: '/dashboard/repairs', icon: Wrench },
       { name: 'Muadil Cihazlar', href: '/dashboard/equivalent-devices', icon: Box },
       { name: 'Teknik Servis Takibi', href: '/dashboard/technical-service', icon: Cog },

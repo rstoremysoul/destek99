@@ -334,6 +334,40 @@ model Location {
   @@map("locations")
 }
 
+model IncomingCargoCompany {
+  id        String                @id @default(uuid())
+  name      String                @unique
+  active    Boolean               @default(true)
+  createdAt DateTime              @default(now()) @map("created_at")
+  updatedAt DateTime              @updatedAt @map("updated_at")
+  branches  IncomingCargoBranch[]
+
+  @@map("incoming_cargo_companies")
+}
+
+model IncomingCargoBranch {
+  id        String               @id @default(uuid())
+  companyId String               @map("company_id")
+  company   IncomingCargoCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  active    Boolean              @default(true)
+  createdAt DateTime             @default(now()) @map("created_at")
+  updatedAt DateTime             @updatedAt @map("updated_at")
+
+  @@unique([companyId, name])
+  @@map("incoming_cargo_branches")
+}
+
+model IncomingCargoFaultOption {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("incoming_cargo_fault_options")
+}
+
 // Equivalent Device Model
 model EquivalentDevice {
   id                  String                        @id @default(uuid())

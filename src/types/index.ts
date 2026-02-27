@@ -135,6 +135,18 @@ export interface CargoTracking {
     targetLocationName: string
     transferredAt: string
   } | null
+  incomingFlow?: {
+    channel: 'cargo' | 'on_site_service' | 'supplier' | 'installation_team' | 'customer'
+    companyId: string
+    companyName: string
+    branchId: string
+    branchName: string
+    selectedFaultIds: string[]
+    selectedFaultNames: string[]
+    cosmeticState: 'normal' | 'damaged_in_shipping'
+    cosmeticDetail?: string
+    damageImageData?: string[]
+  } | null
   devices: CargoDevice[]
   destination: 'customer' | 'distributor' | 'branch' | 'headquarters'
   destinationAddress: string

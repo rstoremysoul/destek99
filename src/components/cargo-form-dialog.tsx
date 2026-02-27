@@ -38,6 +38,7 @@ interface DeviceFormData {
 interface CargoCompany {
   id: string
   name: string
+  active?: boolean
 }
 
 interface EquivalentDeviceOption {
@@ -152,7 +153,10 @@ export function CargoFormDialog({
   const trackingCheckReqRef = useRef(0)
 
   const mergedCompanies = useMemo(
-    () => Array.from(new Set([...DEFAULT_CARGO_COMPANIES, ...companies.map((company) => company.name)])),
+    () => Array.from(new Set([
+      ...DEFAULT_CARGO_COMPANIES,
+      ...companies.filter((company) => company.active !== false).map((company) => company.name),
+    ])),
     [companies]
   )
   const mergedDeviceTypes = useMemo(

@@ -75,7 +75,10 @@ export async function GET(request: NextRequest) {
 
     const enriched = await Promise.all(cargos.map(async (cargo) => {
       // Varsayilan olarak depo bilgisi verme; sadece envanterde dogrulanmis lokasyon goster.
-      let locationName: string | null = null;
+      // Gelen kargoda is kurali geregi depo her zaman merkez ofis kabul edilir.
+      let locationName: string | null = cargo.type === 'INCOMING'
+        ? (cargo.destinationAddress || DEFAULT_HQ_NAME)
+        : null;
 
       // Eğer kargo cihaz içeriyorsa, bu cihazların güncel konumuna bakalım
       if (cargo.devices && cargo.devices.length > 0) {
@@ -108,14 +111,14 @@ export async function GET(request: NextRequest) {
             locationName = 'Muhtelif / Dağıtılmış';
           }
           if (locations.size === 0 && cargo.type === 'INCOMING') {
-            locationName = 'Depoya Islenmemis';
+            locationName = cargo.destinationAddress || DEFAULT_HQ_NAME;
           }
         } else if (cargo.type === 'INCOMING') {
-          locationName = 'Depoya Islenmemis';
+          locationName = cargo.destinationAddress || DEFAULT_HQ_NAME;
         }
       } else if (cargo.type === 'INCOMING') {
-        // Cihaz girisi olmayan gelen kayitlarda lokasyon envanterden dogrulanamaz.
-        locationName = 'Depoya Islenmemis';
+        // Cihaz girisi olmayan gelen kayitlarda da merkez ofis depo kabul edilir.
+        locationName = cargo.destinationAddress || DEFAULT_HQ_NAME;
       }
 
       const repairRows = await prisma.deviceRepair.findMany({
@@ -291,7 +294,7 @@ export async function POST(request: NextRequest) {
         ? CargoDestination.HEADQUARTERS
         : (destinationMap[destination?.toLowerCase()] || CargoDestination.CUSTOMER),
       destinationAddress: isIncoming
-        ? (typeof destinationAddress === 'string' && destinationAddress.trim() ? destinationAddress : DEFAULT_HQ_NAME)
+        ? DEFAULT_HQ_NAME
         : destinationAddress,
       notes,
       devices: {
@@ -350,28 +353,17 @@ export async function POST(request: NextRequest) {
     // --- AUTOMATIC WAREHOUSE ASSIGNMENT FOR INCOMING CARGO ---
     if (resolvedType === CargoType.INCOMING) {
       try {
-        let targetLocation;
-
-        // 1. Determine Target Location
-        if (body.targetLocationId) {
-          targetLocation = await prisma.location.findUnique({
-            where: { id: body.targetLocationId }
-          });
-        }
-
-        // Fallback to "Office" if no target selected or not found
+        // Gelen kargo is kurali: hedef depo her zaman Merkez Ofis.
+        let targetLocation = await getHeadquartersLocation();
         if (!targetLocation) {
-          targetLocation = await getHeadquartersLocation();
-          if (!targetLocation) {
-            targetLocation = await prisma.location.create({
-              data: {
-                name: DEFAULT_HQ_NAME,
-                type: 'HEADQUARTERS',
-                address: 'Otomatik Oluşturuldu',
-                active: true,
-              }
-            })
-          }
+          targetLocation = await prisma.location.create({
+            data: {
+              name: DEFAULT_HQ_NAME,
+              type: 'HEADQUARTERS',
+              address: 'Otomatik Oluşturuldu',
+              active: true,
+            }
+          })
         }
 
         // 2. Move equivalent inventory devices by explicit id or serial match.

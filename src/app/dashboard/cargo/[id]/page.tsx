@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner'
 import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
 import { parseCargoVendorMeta } from '@/lib/cargo-vendor-workflow'
+import { parseIncomingCargoFlowMeta } from '@/lib/incoming-cargo-flow'
 
 interface PageProps {
   params: { id: string }
@@ -42,6 +43,7 @@ export default function CargoDetailPage({ params }: PageProps) {
       if (response.ok) {
         const data = await response.json()
         const vendorMeta = parseCargoVendorMeta(data.notes)
+        const incomingMeta = parseIncomingCargoFlowMeta(vendorMeta.notesWithoutMeta)
         // Map database format to component format
         const mappedData: CargoTracking = {
           id: data.id,
@@ -50,14 +52,15 @@ export default function CargoDetailPage({ params }: PageProps) {
           status: data.status.toLowerCase(),
           recordStatus: (data.recordStatus ? String(data.recordStatus).toLowerCase() : 'open') as 'open' | 'on_hold' | 'closed' | 'device_repair' | 'ready_to_ship',
           sender: data.sender,
-          receiver: data.receiver,
+          receiver: data.receiver || '',
           cargoCompany: data.cargoCompany,
           sentDate: data.sentDate ? new Date(data.sentDate) : undefined,
           deliveredDate: data.deliveredDate ? new Date(data.deliveredDate) : undefined,
           destination: data.destination.toLowerCase(),
           destinationAddress: data.destinationAddress,
-          notes: vendorMeta.notesWithoutMeta,
+          notes: incomingMeta.cleanNotes,
           vendorTracking: vendorMeta.meta,
+          incomingFlow: incomingMeta.meta,
           devices: data.devices.map((d: any) => ({
             id: d.id,
             deviceName: d.deviceName,
@@ -226,6 +229,17 @@ export default function CargoDetailPage({ params }: PageProps) {
   const isTechnicalServiceOutgoing =
     cargo.type === 'outgoing' && String(cargo.notes || '').includes('[AUTO_OUTGOING_FROM_REPAIR:')
 
+  const getIncomingChannelText = (channel?: string) => {
+    switch (channel) {
+      case 'on_site_service': return 'Yerinde Servis'
+      case 'installation_team': return 'Kurulum Ekibi'
+      case 'supplier': return 'Tedarikci'
+      case 'customer': return 'Musteri'
+      case 'cargo': return 'Kargo'
+      default: return '-'
+    }
+  }
+
   return (
     <div className="container mx-auto py-6">
       {/* Header */}
@@ -328,7 +342,7 @@ export default function CargoDetailPage({ params }: PageProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="font-medium">{cargo.receiver}</p>
+                <p className="font-medium">{cargo.type === 'incoming' ? '-' : (cargo.receiver || '-')}</p>
               </CardContent>
             </Card>
           </div>
@@ -399,6 +413,15 @@ export default function CargoDetailPage({ params }: PageProps) {
                   <p className="font-medium">
                     Kayit tedarikci takibine devredildi ({cargo.vendorTracking.vendorName})
                   </p>
+                </div>
+              ) : null}
+              {cargo.incomingFlow ? (
+                <div className="rounded-md border p-3">
+                  <p className="text-sm text-muted-foreground">Gelen Kargo Akis Bilgisi</p>
+                  <p className="font-medium">Kanal: {getIncomingChannelText(cargo.incomingFlow.channel)}</p>
+                  <p className="text-sm">Firma/Sube: {cargo.incomingFlow.companyName} / {cargo.incomingFlow.branchName}</p>
+                  <p className="text-sm">Ariza Sayisi: {cargo.incomingFlow.selectedFaultNames?.length || 0}</p>
+                  <p className="text-sm">Kozmetik: {cargo.incomingFlow.cosmeticState === 'damaged_in_shipping' ? 'Kargodan Hasarli Geldi' : 'Normal'}</p>
                 </div>
               ) : null}
             </CardContent>

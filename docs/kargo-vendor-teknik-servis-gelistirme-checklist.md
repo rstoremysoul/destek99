@@ -174,3 +174,30 @@ Bu dokuman, istenen yeni operasyon akisini adim adim uygulamak ve ilerlemeyi tik
 - [x] Vendor detay ekranina `Teknik Servise Cek` aksiyonu eklendi.
 - [x] Repair detay ekranina olusan otomatik giden kargo baglantisi eklendi.
 - [x] Tamir kaydi API cevabina `relatedOutgoingCargo` bilgisi eklendi.
+- [x] Sol menude `Kargo Takibi Gelen` ve `Kargo Takibi Giden` olarak iki ayri ekran rotasi acildi.
+
+## 12) Yeni Gelen Kargo Wizard (Step-by-Step)
+
+- [x] `Yeni Gelen Kargo` butonu step-by-step wizard akisina alindi.
+- [x] Kanal secimine gore takip no/kargo firmasi adimi dinamiklestirildi.
+- [x] Firma -> Sube secimi ayarlardan yonetilecek sekilde yeni kaynaklar eklendi.
+- [x] Bildirilen ariza secenekleri coklu secim + ayarlardan yonetilebilir hale getirildi.
+- [x] Kozmetik `Kargodan Hasarli Geldi` seciminde gorsel yukleme zorunlu hale getirildi.
+- [x] Wizard adim gostergesi ilerleme durumunu kart + progress bar ile daha okunur hale getirildi.
+- [x] Kanal secim adimi kart tabanli secim deneyimi ile daha hizli/estetik hale getirildi.
+
+## 13) Gelen/Giden Dashboard Sayac Duzeltmesi
+
+- [x] Gelen/Giden kartlarindaki sayaclar sadece aktif tabdan degil tum kayitlardan hesaplanacak sekilde duzeltildi.
+- [x] Ayri sol menu ekranlarinda (`Kargo Takibi Gelen`, `Kargo Takibi Giden`) sayaclarin 0 gorunme yanilgisi giderildi.
+
+## 14) Ayarlar Kapsami Genisletme
+
+- [x] `Kargo Firmalari` icin Ayarlar ekranina yonetim karti eklendi (ekle + aktif/pasif).
+- [x] `Kargo Firmasi` secim listeleri yalnizca aktif firmalari gosterecek sekilde guncellendi.
+- [x] Gelen kargo wizardinda firma listesi bossa kullaniciya "Ayarlar'dan ekleyin" yonlendirmesi eklendi.
+
+## 15) Gelen Kargo Is Kurali Duzeltmeleri
+
+- [x] Gelen kargoda depo bilgisi her zaman `Merkez Ofis Deposu` olacak sekilde sabitlendi.
+- [x] Gelen kargo kayitlarinda `Alici` anlamsiz oldugu icin veri seviyesi ve UI seviyesinde bos/`-` olarak ele alindi.

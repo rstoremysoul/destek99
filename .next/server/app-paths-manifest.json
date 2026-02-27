@@ -1,16 +1,13 @@
 {
-  "/login/page": "app/login/page.js",
-  "/api/auth/me/route": "app/api/auth/me/route.js",
-  "/api/repairs/route": "app/api/repairs/route.js",
   "/api/cargo/route": "app/api/cargo/route.js",
-  "/api/equivalent-devices/route": "app/api/equivalent-devices/route.js",
-  "/api/technical-service/route": "app/api/technical-service/route.js",
-  "/api/vendors/route": "app/api/vendors/route.js",
+  "/api/incoming-cargo-branches/route": "app/api/incoming-cargo-branches/route.js",
+  "/api/incoming-cargo-companies/route": "app/api/incoming-cargo-companies/route.js",
+  "/api/models/all/route": "app/api/models/all/route.js",
+  "/api/cargo-companies/route": "app/api/cargo-companies/route.js",
+  "/api/incoming-cargo-faults/route": "app/api/incoming-cargo-faults/route.js",
   "/api/brands/route": "app/api/brands/route.js",
-  "/api/vendor-tracking/route": "app/api/vendor-tracking/route.js",
-  "/dashboard/cargo/page": "app/dashboard/cargo/page.js",
+  "/dashboard/cargo-incoming/page": "app/dashboard/cargo-incoming/page.js",
+  "/dashboard/warehouses/page": "app/dashboard/warehouses/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/technical-service/page": "app/dashboard/technical-service/page.js",
-  "/dashboard/vendor-tracking/page": "app/dashboard/vendor-tracking/page.js",
-  "/dashboard/equivalent-devices/page": "app/dashboard/equivalent-devices/page.js"
+  "/dashboard/settings/page": "app/dashboard/settings/page.js"
 }
