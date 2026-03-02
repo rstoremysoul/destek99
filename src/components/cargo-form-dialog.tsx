@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -174,7 +174,7 @@ export function CargoFormDialog({
   )
   const initialTrackingNumber = (initialData?.trackingNumber || '').trim()
 
-  const checkTrackingConflict = async (rawTrackingNumber: string) => {
+  const checkTrackingConflict = useCallback(async (rawTrackingNumber: string) => {
     const trackingNumber = rawTrackingNumber.trim()
     if (!trackingNumber) {
       setTrackingCheck({ checking: false, exists: false, checkedValue: '' })
@@ -214,7 +214,7 @@ export function CargoFormDialog({
       }
       return false
     }
-  }
+  }, [mode, initialTrackingNumber, initialData?.id])
 
   useEffect(() => {
     if (!open) return
@@ -358,7 +358,7 @@ export function CargoFormDialog({
     }, 350)
 
     return () => clearTimeout(timeout)
-  }, [open, formData.trackingNumber, mode, initialData?.id, initialTrackingNumber])
+  }, [open, formData.trackingNumber, checkTrackingConflict])
 
   const updateDevice = (index: number, patch: Partial<DeviceFormData>) => {
     setDevices((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))

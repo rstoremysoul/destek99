@@ -121,7 +121,7 @@ export default function CargoRepairDetailPage({ params }: { params: { id: string
         setTechnicians(normalized)
       })
       .catch((error) => console.error('Failed to load technicians', error))
-  }, [data?.id])
+  }, [data])
 
   const toggleOperation = (op: string) => {
     setOperations((prev) => (prev.includes(op) ? prev.filter((x) => x !== op) : [...prev, op]))
