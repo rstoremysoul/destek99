@@ -57,6 +57,10 @@ function buildAutoTrackingNumber() {
   return `INC-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 90 + 10)}`
 }
 
+function buildDeviceId() {
+  return `dev-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: IncomingCargoWizardDialogProps) {
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
@@ -275,7 +279,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
         `[[INCOMING_FLOW_META]] ${JSON.stringify(flowMeta)}`,
       ].filter(Boolean).join('\n'),
       devices: devices.map((d) => ({
-        id: crypto.randomUUID(),
+        id: buildDeviceId(),
         deviceName: d.deviceName,
         model: d.model,
         serialNumber: d.serialNumber.trim(),
