@@ -16,6 +16,7 @@ import { CargoFormDialog } from '@/components/cargo-form-dialog'
 import { CargoDispatchDialog } from '@/components/cargo-dispatch-dialog'
 import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
 import { IncomingCargoWizardDialog } from '@/components/incoming-cargo-wizard-dialog'
+import { OutgoingCargoWizardDialog } from '@/components/outgoing-cargo-wizard-dialog'
 import { toast } from 'sonner'
 import { parseCargoVendorMeta } from '@/lib/cargo-vendor-workflow'
 import { parseIncomingCargoFlowMeta } from '@/lib/incoming-cargo-flow'
@@ -26,6 +27,7 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [incomingWizardOpen, setIncomingWizardOpen] = useState(false)
+  const [outgoingWizardOpen, setOutgoingWizardOpen] = useState(false)
   const initialView = lockedView || 'incoming'
   const [createCargoType, setCreateCargoType] = useState<'INCOMING' | 'OUTGOING'>(initialView === 'incoming' ? 'INCOMING' : 'OUTGOING')
   const [cargoViewTab, setCargoViewTab] = useState<'incoming' | 'outgoing'>(initialView)
@@ -72,8 +74,7 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
       setIncomingWizardOpen(true)
       return
     }
-    setCreateCargoType(type)
-    setIsFormOpen(true)
+    setOutgoingWizardOpen(true)
   }
 
   const isLockedView = Boolean(lockedView)
@@ -244,6 +245,42 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
     } catch (error) {
       toast.error('Kargo kaydi olusturulurken hata olustu')
       console.error('Error creating cargo:', error)
+      return false
+    }
+  }
+
+  const handleCreateOutgoingFromTicket = async (payload: {
+    selectedDevices: Array<{
+      sourceCargoId?: string
+      sourceDeviceId?: string
+      sourceSerialNumber: string
+      sourceEquivalentDeviceId: string
+    }>
+    sourceLocationId: string
+    receiverCompanyName: string
+    receiverBranchName: string
+    targetLocationId: string
+    notes: string
+  }) => {
+    try {
+      const response = await fetch('/api/cargo/outgoing-from-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => null)
+        toast.error(error?.error || 'Transfer basarisiz')
+        return false
+      }
+
+      await fetchCargos()
+      toast.success('Transfer tamamlandi, ticket kapatildi')
+      return true
+    } catch (error) {
+      console.error('Outgoing ticket transfer error:', error)
+      toast.error('Transfer sirasinda hata olustu')
       return false
     }
   }
@@ -1035,6 +1072,12 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
         open={incomingWizardOpen}
         onOpenChange={setIncomingWizardOpen}
         onSubmit={handleAddCargo}
+      />
+
+      <OutgoingCargoWizardDialog
+        open={outgoingWizardOpen}
+        onOpenChange={setOutgoingWizardOpen}
+        onSubmit={handleCreateOutgoingFromTicket}
       />
 
       {/* Düzenleme Dialog */}

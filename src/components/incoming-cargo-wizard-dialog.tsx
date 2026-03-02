@@ -86,7 +86,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
   const [damageImageData, setDamageImageData] = useState<string[]>([])
   const [notes, setNotes] = useState('')
 
-  const requiresTransport = channel !== 'on_site_service' && channel !== 'installation_team'
+  const requiresTransport = channel !== 'on_site_service' && channel !== 'installation_team' && channel !== 'supplier'
   const activeCompanies = companies.filter((c) => c.active)
   const activeBranches = branches.filter((b) => b.active && b.companyId === companyId)
   const activeFaults = faultOptions.filter((f) => f.active)
@@ -356,7 +356,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {(Object.keys(CHANNEL_LABELS) as IncomingChannel[]).map((value) => {
                   const selected = channel === value
-                  const lightweightFlow = value === 'on_site_service' || value === 'installation_team'
+                  const lightweightFlow = value === 'on_site_service' || value === 'installation_team' || value === 'supplier'
                   return (
                     <button
                       type="button"

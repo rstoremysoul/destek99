@@ -5,6 +5,10 @@ import { appendCargoRepairHistory, parseCargoRepairMeta } from '@/lib/cargo-repa
 
 const DEFAULT_HQ_NAME = 'Merkez Ofis Deposu'
 
+function generateEquivalentDeviceNumber() {
+  return `INC-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 900 + 100)}`
+}
+
 function isUnknownRecordStatusArg(error: unknown) {
   if (!(error instanceof Error)) return false
   return error.message.includes('Unknown argument `recordStatus`') || error.message.includes('record_status')
@@ -368,7 +372,7 @@ export async function POST(request: NextRequest) {
 
         // 2. Move equivalent inventory devices by explicit id or serial match.
         let movedEquivalentCount = 0
-        let skippedNonEquivalentCount = 0
+        let createdEquivalentCount = 0
 
         for (const device of deviceList) {
           if (!device.serialNumber || device.serialNumber.length < 3) continue;
@@ -414,13 +418,55 @@ export async function POST(request: NextRequest) {
 
             movedEquivalentCount++
           } else {
-            skippedNonEquivalentCount++
+            // Envanterde yoksa gelen kargoda otomatik olustur.
+            let createdDevice = null as any
+            try {
+              createdDevice = await prisma.equivalentDevice.create({
+                data: {
+                  deviceNumber: generateEquivalentDeviceNumber(),
+                  deviceName: String(device.deviceName || 'Bilinmeyen Cihaz'),
+                  brand: 'GENEL',
+                  model: String(device.model || '-'),
+                  serialNumber: String(device.serialNumber),
+                  locationId: targetLocation.id,
+                  currentLocation: 'IN_WAREHOUSE',
+                  status: 'AVAILABLE',
+                  recordStatus: 'OPEN',
+                  condition: 'GOOD',
+                  notes: `Gelen kargo kaydindan otomatik olusturuldu (${trackingNumber})`,
+                  createdBy: 'SYSTEM',
+                  createdByName: 'Sistem (Otomatik Kargo Girisi)',
+                },
+              })
+            } catch (createError) {
+              // Yaris kosulunda ayni seri daha once acilmissa tekrar bul.
+              createdDevice = await prisma.equivalentDevice.findUnique({
+                where: { serialNumber: String(device.serialNumber) }
+              })
+              if (!createdDevice) throw createError
+            }
+
+            await prisma.equivalentDeviceHistory.create({
+              data: {
+                deviceId: createdDevice.id,
+                previousLocation: createdDevice.currentLocation || 'IN_WAREHOUSE',
+                newLocation: 'IN_WAREHOUSE',
+                previousLocationId: createdDevice.locationId || targetLocation.id,
+                newLocationId: targetLocation.id,
+                assignedToName: `Kargo ile Giris (${trackingNumber})`,
+                notes: `Gelen Kargo: ${trackingNumber} - Gonderen: ${sender} - Depo: ${targetLocation.name} (otomatik olusturma)`,
+                changedBy: 'SYSTEM',
+                changedByName: 'Sistem (Otomatik Kargo Girisi)',
+              }
+            })
+
+            createdEquivalentCount++
           }
         }
 
-        if (movedEquivalentCount > 0 || skippedNonEquivalentCount > 0) {
+        if (movedEquivalentCount > 0 || createdEquivalentCount > 0) {
           console.log(
-            `[cargo-incoming] tracking=${trackingNumber} movedEquivalent=${movedEquivalentCount} skipped=${skippedNonEquivalentCount}`
+            `[cargo-incoming] tracking=${trackingNumber} movedEquivalent=${movedEquivalentCount} createdEquivalent=${createdEquivalentCount}`
           )
         }
       } catch (err) {

@@ -1,8 +1,15 @@
 {
-  "/login/page": "app/login/page.js",
-  "/api/auth/me/route": "app/api/auth/me/route.js",
   "/api/cargo/route": "app/api/cargo/route.js",
-  "/icon.svg/route": "app/icon.svg/route.js",
+  "/api/incoming-cargo-branches/route": "app/api/incoming-cargo-branches/route.js",
+  "/api/incoming-cargo-companies/route": "app/api/incoming-cargo-companies/route.js",
+  "/api/warehouses/inventory/route": "app/api/warehouses/inventory/route.js",
+  "/api/cargo/outgoing-from-ticket/route": "app/api/cargo/outgoing-from-ticket/route.js",
+  "/api/warehouses/route": "app/api/warehouses/route.js",
+  "/dashboard/warehouses/page": "app/dashboard/warehouses/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/cargo-incoming/page": "app/dashboard/cargo-incoming/page.js"
+  "/api/warehouses/[id]/route": "app/api/warehouses/[id]/route.js",
+  "/dashboard/cargo-outgoing/page": "app/dashboard/cargo-outgoing/page.js",
+  "/dashboard/warehouses/[id]/page": "app/dashboard/warehouses/[id]/page.js",
+  "/dashboard/cargo-incoming/page": "app/dashboard/cargo-incoming/page.js",
+  "/api/warehouses/movements/route": "app/api/warehouses/movements/route.js"
 }
