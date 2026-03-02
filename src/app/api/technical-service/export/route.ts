@@ -13,24 +13,24 @@ export async function GET() {
     // Convert data to CSV format
     const headers = [
       'ID',
-      'İşlem Yapan Personel',
+      'ÃÃ¾lem Yapan Personel',
       'Fatura Tarihi',
       'Marka',
-      'İşletme Adı',
-      'Cihazın Adı',
+      'ÃÃ¾letme AdÃ½',
+      'CihazÃ½n AdÃ½',
       'Model',
       'Cihaz Seri No',
-      'Teknik Servise Giriş Tarihi',
-      'Teknik Servisten Çıkış Tarihi',
+      'Teknik Servise GiriÃ¾ Tarihi',
+      'Teknik Servisten Ã‡Ã½kÃ½Ã¾ Tarihi',
       'Cihaz Sorunu',
-      'Cihaz Sorun Açıklamaları',
-      'Yapılan İşlem',
-      'Teknik Servis Masrafı',
-      'Bizim Müşteriye Söylediğimiz Masraf',
-      'Onaylayan Kişi',
-      'Connect Yazıldı mı',
-      'Oluşturulma Tarihi',
-      'Güncellenme Tarihi'
+      'Cihaz Sorun AÃ§Ã½klamalarÃ½',
+      'YapÃ½lan ÃÃ¾lem',
+      'Teknik Servis MasrafÃ½',
+      'Bizim MÃ¼Ã¾teriye SÃ¶ylediÃ°imiz Masraf',
+      'Onaylayan KiÃ¾i',
+      'Connect YazÃ½ldÃ½ mÃ½',
+      'OluÃ¾turulma Tarihi',
+      'GÃ¼ncellenme Tarihi'
     ]
 
     const csvRows = [
