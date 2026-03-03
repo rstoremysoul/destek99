@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey'
+const JWT_SECRET = process.env.JWT_SECRET
 export const runtime = 'nodejs'
 
 const DEMO_USERS: Record<string, { name: string; email: string; role: 'ADMIN' | 'TECHNICIAN' | 'MANAGER' }> = {
@@ -14,6 +14,14 @@ const DEMO_USERS: Record<string, { name: string; email: string; role: 'ADMIN' | 
 
 export async function POST(request: Request) {
   try {
+    if (!JWT_SECRET) {
+      console.error('Missing JWT_SECRET environment variable')
+      return NextResponse.json(
+        { message: 'Sunucu kimlik dogrulama ayari eksik' },
+        { status: 500 }
+      )
+    }
+
     const body = await request.json().catch(() => ({}))
     const username = String(body?.username || '').trim()
     const password = String(body?.password || '')
