@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CargoTracking } from '@/types'
 import { Plus, Search, Eye, Truck, Package, ArrowUp, ArrowDown, MapPin, ArrowRightLeft, Pencil, Lock, PauseCircle, CheckCircle2, Wrench, FolderOpen, XCircle, Clock3, MoreVertical } from 'lucide-react'
 import { CargoFormDialog } from '@/components/cargo-form-dialog'
@@ -309,39 +309,6 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
       toast.error('Kargo kaydi guncellenirken hata olustu')
       console.error('Error updating cargo:', error)
       return false
-    }
-  }
-
-  const handleUpdateRecordStatus = async (cargoId: string, newStatus: 'open' | 'on_hold' | 'closed' | 'device_repair') => {
-    if (newStatus === 'device_repair') {
-      const cargo = cargos.find((item) => item.id === cargoId)
-      if (!cargo) return
-      setRepairTicketCargo(cargo)
-      setRepairTicketOpen(true)
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/cargo/${cargoId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recordStatus: newStatus,
-        }),
-      })
-
-      if (response.ok) {
-        fetchCargos()
-      } else {
-        const error = await response.json().catch(() => null)
-        toast.error(error?.error || 'Kayıt durumu güncellenemedi')
-        console.error('Failed to update cargo record status', error)
-      }
-    } catch (error) {
-      toast.error('Kayıt durumu güncellenirken hata oluştu')
-      console.error('Error updating cargo record status:', error)
     }
   }
 
@@ -1006,12 +973,6 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
                               Tedarikci Kaydina Git
                             </DropdownMenuItem>
                           ) : null}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Kayit Durumu</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'open')}>Acik</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'on_hold')}>Beklemede</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'device_repair')}>Cihaz Tamiri</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'closed')}>Kapali</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>

@@ -6,13 +6,13 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   Home,
-  Ticket,
+
   Users,
   Building2,
   Settings,
   LogOut,
   Wrench,
-  Package,
+
   Truck,
   HardDrive,
   ChevronDown,
@@ -29,12 +29,10 @@ import { Button } from '@/components/ui/button'
 
 const navigation = [
   { name: 'Ana Sayfa', href: '/dashboard', icon: Home },
-  { name: 'Destek Kayıtları', href: '/dashboard/tickets', icon: Ticket },
   {
     name: 'Donanım Birimi',
     icon: HardDrive,
     children: [
-      { name: 'Kurulum Formları', href: '/dashboard/installations', icon: Package },
       { name: 'Kargo Takibi Gelen', href: '/dashboard/cargo-incoming', icon: Truck },
       { name: 'Kargo Takibi Giden', href: '/dashboard/cargo-outgoing', icon: Truck },
       { name: 'Cihaz Tamiri', href: '/dashboard/repairs', icon: Wrench },

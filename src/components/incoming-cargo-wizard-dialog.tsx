@@ -19,9 +19,11 @@ type Branch = { id: string; name: string; active: boolean; companyId: string }
 type Fault = { id: string; name: string; active: boolean }
 
 type DeviceLine = {
+  id: string
   deviceName: string
   model: string
   serialNumber: string
+  selectedFaultIds: string[]
 }
 
 interface IncomingCargoWizardDialogProps {
@@ -48,9 +50,11 @@ const CHANNEL_LABELS: Record<IncomingChannel, string> = {
 }
 
 const createEmptyDevice = (): DeviceLine => ({
+  id: buildDeviceId(),
   deviceName: '',
   model: '',
   serialNumber: '',
+  selectedFaultIds: [],
 })
 
 function buildAutoTrackingNumber() {
@@ -80,7 +84,6 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
   const [devices, setDevices] = useState<DeviceLine[]>([createEmptyDevice()])
 
   const [faultOptions, setFaultOptions] = useState<Fault[]>([])
-  const [selectedFaultIds, setSelectedFaultIds] = useState<string[]>([])
   const [cosmeticState, setCosmeticState] = useState<CosmeticState>('normal')
   const [cosmeticDetail, setCosmeticDetail] = useState('')
   const [damageImageData, setDamageImageData] = useState<string[]>([])
@@ -184,8 +187,16 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
     setDevices((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)))
   }
 
-  const toggleFault = (faultId: string) => {
-    setSelectedFaultIds((prev) => (prev.includes(faultId) ? prev.filter((id) => id !== faultId) : [...prev, faultId]))
+  const toggleDeviceFault = (deviceId: string, faultId: string) => {
+    setDevices((prev) =>
+      prev.map((d) => {
+        if (d.id !== deviceId) return d
+        const nextFaultIds = d.selectedFaultIds.includes(faultId)
+          ? d.selectedFaultIds.filter((id) => id !== faultId)
+          : [...d.selectedFaultIds, faultId]
+        return { ...d, selectedFaultIds: nextFaultIds }
+      })
+    )
   }
 
   const handleDamageImageChange = async (files: FileList | null) => {
@@ -247,9 +258,27 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
       return
     }
 
-    const selectedFaultNames = activeFaults
-      .filter((f) => selectedFaultIds.includes(f.id))
-      .map((f) => f.name)
+    const deviceFaults = devices.map((device) => {
+      const selectedFaultNames = activeFaults
+        .filter((f) => device.selectedFaultIds.includes(f.id))
+        .map((f) => f.name)
+
+      return {
+        deviceId: device.id,
+        deviceName: device.deviceName,
+        model: device.model,
+        serialNumber: device.serialNumber.trim(),
+        selectedFaultIds: device.selectedFaultIds,
+        selectedFaultNames,
+      }
+    })
+
+    const selectedFaultIds = Array.from(
+      new Set(deviceFaults.flatMap((d) => d.selectedFaultIds))
+    )
+    const selectedFaultNames = Array.from(
+      new Set(deviceFaults.flatMap((d) => d.selectedFaultNames))
+    )
 
     const flowMeta = {
       channel,
@@ -259,6 +288,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
       branchName: selectedBranchName,
       selectedFaultIds,
       selectedFaultNames,
+      deviceFaults,
       cosmeticState,
       cosmeticDetail: cosmeticDetail || '',
       damageImageData,
@@ -300,7 +330,6 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
       setTrackingNumber('')
       setCargoCompany('')
       setDevices([createEmptyDevice()])
-      setSelectedFaultIds([])
       setCosmeticState('normal')
       setCosmeticDetail('')
       setDamageImageData([])
@@ -452,7 +481,8 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
           {step === 3 && (
             <div className="space-y-3">
               {devices.map((device, index) => (
-                <div key={index} className="grid gap-3 rounded-md border p-3 sm:grid-cols-3">
+                <div key={device.id} className="space-y-3 rounded-md border p-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label>Cihaz Adi</Label>
                     <Select value={device.deviceName} onValueChange={(v) => updateDevice(index, { deviceName: v, model: '' })}>
@@ -479,6 +509,21 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                     <Label>Seri No</Label>
                     <Input value={device.serialNumber} onChange={(e) => updateDevice(index, { serialNumber: e.target.value })} />
                   </div>
+                  </div>
+                  <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50/70 p-2">
+                    <Label>Bildirilen Ariza Secenekleri (Cihaz Bazli)</Label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {activeFaults.map((f) => (
+                        <label key={`${device.id}-${f.id}`} className="flex items-center gap-2 rounded border bg-white p-2 text-sm">
+                          <Checkbox
+                            checked={device.selectedFaultIds.includes(f.id)}
+                            onCheckedChange={() => toggleDeviceFault(device.id, f.id)}
+                          />
+                          {f.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ))}
               <div className="flex gap-2">
@@ -496,16 +541,8 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
 
           {step === 4 && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Bildirilen Ariza (coklu secim)</Label>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {activeFaults.map((f) => (
-                    <label key={f.id} className="flex items-center gap-2 rounded border p-2 text-sm">
-                      <Checkbox checked={selectedFaultIds.includes(f.id)} onCheckedChange={() => toggleFault(f.id)} />
-                      {f.name}
-                    </label>
-                  ))}
-                </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                Bildirilen ariza secimleri cihaz bazli olarak onceki adimda yapilir.
               </div>
 
               <div className="space-y-2">
@@ -545,7 +582,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
               <div><strong>Kargo Firmasi:</strong> {requiresTransport ? cargoCompany || '-' : 'Yerinde/Kurulum'}</div>
               <div><strong>Firma/Sube:</strong> {selectedCompanyName} / {selectedBranchName}</div>
               <div><strong>Cihaz Sayisi:</strong> {devices.length}</div>
-              <div><strong>Ariza Secimi:</strong> {selectedFaultIds.length}</div>
+              <div><strong>Ariza Secimi:</strong> {devices.reduce((sum, d) => sum + d.selectedFaultIds.length, 0)}</div>
               <div><strong>Kozmetik:</strong> {cosmeticState === 'damaged_in_shipping' ? 'Hasarli' : 'Normal'}</div>
             </div>
           )}
