@@ -3,10 +3,17 @@ import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey'
+const JWT_SECRET = process.env.JWT_SECRET
 export const runtime = 'nodejs'
 
 export async function GET() {
+  if (!JWT_SECRET) {
+    return NextResponse.json(
+      { message: 'Sunucu kimlik dogrulama ayari eksik' },
+      { status: 500 }
+    )
+  }
+
   const cookieStore = await cookies()
   const token = cookieStore.get('auth_token')
 
