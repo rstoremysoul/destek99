@@ -57,10 +57,10 @@ type ServiceRow = {
 }
 
 const secondCards: StatusCard[] = [
-  { title: 'KARGOYA VERILENLER', count: 1, note: '%4 Kargoya Verildi', icon: Truck, className: 'bg-pink-600' },
-  { title: 'TESLIM EDILENLER', count: 4, note: '%19 Teslim Edildi', icon: PackageCheck, className: 'bg-cyan-500' },
-  { title: 'PARCA BEKLEYENLER', count: 1, note: '%4 Parca Bekliyor', icon: Clock3, className: 'bg-blue-600' },
-  { title: 'BORCLU OLANLAR', count: 4, note: '%21 Borcu Var', icon: ReceiptText, className: 'bg-indigo-600' },
+  { title: 'KARGOYA VERILENLER', count: 1, note: '%4 Kargoya Verildi', icon: Truck, className: 'liquid-pink' },
+  { title: 'TESLIM EDILENLER', count: 4, note: '%19 Teslim Edildi', icon: PackageCheck, className: 'liquid-cyan' },
+  { title: 'PARCA BEKLEYENLER', count: 1, note: '%4 Parca Bekliyor', icon: Clock3, className: 'liquid-blue' },
+  { title: 'BORCLU OLANLAR', count: 4, note: '%21 Borcu Var', icon: ReceiptText, className: 'liquid-indigo' },
 ]
 
 const actionTiles = [
@@ -190,10 +190,10 @@ export default function DashboardPage() {
     const toPct = (value: number) => Math.round((value / total) * 100)
 
     return [
-      { title: 'TAMIR EDILENLER', count: repaired, note: `%${toPct(repaired)} Tamir Edildi`, icon: CheckCircle2, className: 'bg-emerald-600' },
-      { title: 'TAMIRDE OLANLAR', count: repairing, note: `%${toPct(repairing)} Tamiri Devam Etmekte`, icon: Wrench, className: 'bg-amber-500' },
-      { title: 'ISLEME ALINACAKLAR', count: waiting, note: `%${toPct(waiting)} Isleme Alinmadi`, icon: FolderOpen, className: 'bg-slate-900' },
-      { title: 'IPTAL IADE', count: cancelled, note: `%${toPct(cancelled)} Iptal Iade`, icon: XCircle, className: 'bg-red-500' },
+      { title: 'TAMIR EDILENLER', count: repaired, note: `%${toPct(repaired)} Tamir Edildi`, icon: CheckCircle2, className: 'liquid-emerald' },
+      { title: 'TAMIRDE OLANLAR', count: repairing, note: `%${toPct(repairing)} Tamiri Devam Etmekte`, icon: Wrench, className: 'liquid-amber' },
+      { title: 'ISLEME ALINACAKLAR', count: waiting, note: `%${toPct(waiting)} Isleme Alinmadi`, icon: FolderOpen, className: 'liquid-slate' },
+      { title: 'IPTAL IADE', count: cancelled, note: `%${toPct(cancelled)} Iptal Iade`, icon: XCircle, className: 'liquid-rose' },
     ]
   }, [rows])
 
@@ -244,7 +244,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
         {topCards.map((card) => (
-          <div key={card.title} className={`${card.className} rounded-md p-3 text-white`}>
+          <div key={card.title} className={`liquid-stat-card ${card.className} p-3 text-slate-50`}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">{card.title}</p>
@@ -252,14 +252,14 @@ export default function DashboardPage() {
               </div>
               <card.icon className="h-7 w-7 opacity-95" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs font-medium">{card.note}</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs font-medium">{card.note}</div>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
         {secondCards.map((card) => (
-          <div key={card.title} className={`${card.className} rounded-md p-3 text-white`}>
+          <div key={card.title} className={`liquid-stat-card ${card.className} p-3 text-slate-50`}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">{card.title}</p>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
               </div>
               <card.icon className="h-7 w-7 opacity-95" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs font-medium">{card.note}</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs font-medium">{card.note}</div>
           </div>
         ))}
       </div>

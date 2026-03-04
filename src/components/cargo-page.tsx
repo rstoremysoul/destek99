@@ -667,7 +667,7 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
       {/* İstatistik Kartları */}
       <div className="mb-6 space-y-2">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-md bg-amber-500 p-3 text-white">
+          <div className="liquid-stat-card liquid-amber p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">CIHAZ TAMIRINDE</p>
@@ -675,9 +675,9 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               </div>
               <Wrench className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Tamir sureci devam eden kayitlar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Tamir sureci devam eden kayitlar</div>
           </div>
-          <div className="rounded-md bg-emerald-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-emerald p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">GONDERIME HAZIR</p>
@@ -685,9 +685,9 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               </div>
               <CheckCircle2 className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Tamiri tamamlanan ve sevke hazir kayitlar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Tamiri tamamlanan ve sevke hazir kayitlar</div>
           </div>
-          <div className="rounded-md bg-slate-900 p-3 text-white">
+          <div className="liquid-stat-card liquid-slate p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">BEKLEMEDE</p>
@@ -695,9 +695,9 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               </div>
               <Clock3 className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Islem bekleyen kayitlar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Islem bekleyen kayitlar</div>
           </div>
-          <div className="rounded-md bg-red-500 p-3 text-white">
+          <div className="liquid-stat-card liquid-rose p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">KAPALI KAYIT</p>
@@ -705,11 +705,11 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               </div>
               <XCircle className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Tamamlanmis veya kapatilmis kayitlar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Tamamlanmis veya kapatilmis kayitlar</div>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-md bg-fuchsia-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-fuchsia p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">GELEN KARGO</p>
@@ -717,9 +717,9 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               </div>
               <ArrowDown className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Depoya giris yapan kargolar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Depoya giris yapan kargolar</div>
           </div>
-          <div className="rounded-md bg-cyan-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-cyan p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">GIDEN KARGO</p>
@@ -727,9 +727,9 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               </div>
               <ArrowUp className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Musteri veya tedarikciye cikanlar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Musteri veya tedarikciye cikanlar</div>
           </div>
-          <div className="rounded-md bg-blue-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-blue p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">YOLDA</p>
@@ -737,9 +737,9 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               </div>
               <Truck className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Teslimat sureci devam edenler</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Teslimat sureci devam edenler</div>
           </div>
-          <div className="rounded-md bg-indigo-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-indigo p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">TESLIM EDILDI</p>
@@ -747,7 +747,7 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               </div>
               <Package className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Sureci tamamlanan teslimatlar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Sureci tamamlanan teslimatlar</div>
           </div>
         </div>
       </div>

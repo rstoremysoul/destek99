@@ -343,8 +343,8 @@ export default function RepairsPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Cihaz Tamiri</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-100">Cihaz Tamiri</h1>
+        <p className="text-slate-300">
           Tüm tamir taleplerini yönetin ve takip edin.
         </p>
       </div>
@@ -358,10 +358,13 @@ export default function RepairsPage() {
               placeholder="Tamir no, firma, müşteri, cihaz veya seri no ile ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
+              className="border-slate-600/80 bg-slate-950/70 pl-8 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
             />
           </div>
-          <Button onClick={() => setIsDialogOpen(true)}>
+          <Button
+            onClick={() => setIsDialogOpen(true)}
+            className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Yeni Tamir
           </Button>
@@ -370,10 +373,10 @@ export default function RepairsPage() {
         {/* Filtre Satırı */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Select value={companyFilter} onValueChange={setCompanyFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
               <SelectValue placeholder="Firma Filtresi" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
               <SelectItem value="all">Tüm Firmalar</SelectItem>
               {uniqueCompanies.map((company) => (
                 <SelectItem key={company} value={company}>
@@ -384,10 +387,10 @@ export default function RepairsPage() {
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
               <SelectValue placeholder="Durum Filtresi" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
               <SelectItem value="all">Tüm Durumlar</SelectItem>
               <SelectItem value="received">Alındı</SelectItem>
               <SelectItem value="diagnosing">Teşhis Ediliyor</SelectItem>
@@ -400,10 +403,10 @@ export default function RepairsPage() {
           </Select>
 
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
               <SelectValue placeholder="Öncelik Filtresi" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
               <SelectItem value="all">Tüm Öncelikler</SelectItem>
               <SelectItem value="urgent">Acil</SelectItem>
               <SelectItem value="high">Yüksek</SelectItem>
@@ -422,10 +425,10 @@ export default function RepairsPage() {
               }
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
               <SelectValue placeholder="Tarih Filtresi" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
               <SelectItem value="all">Tüm Tarihler</SelectItem>
               <SelectItem value="today">Bugün</SelectItem>
               <SelectItem value="this_week">Bu Hafta</SelectItem>
@@ -439,9 +442,9 @@ export default function RepairsPage() {
 
         {/* Tarih Aralığı Seçici */}
         {dateFilter === 'custom' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg border">
+          <div className="grid grid-cols-1 gap-4 rounded-lg border border-slate-700/70 bg-slate-900/55 p-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="dateStart" className="text-sm font-medium">
+              <Label htmlFor="dateStart" className="text-sm font-medium text-slate-200">
                 Başlangıç Tarihi
               </Label>
               <Input
@@ -449,11 +452,11 @@ export default function RepairsPage() {
                 type="date"
                 value={dateRangeStart}
                 onChange={(e) => setDateRangeStart(e.target.value)}
-                className="w-full"
+                className="w-full border-slate-600/80 bg-slate-950/70 text-slate-100 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dateEnd" className="text-sm font-medium">
+              <Label htmlFor="dateEnd" className="text-sm font-medium text-slate-200">
                 Bitiş Tarihi
               </Label>
               <Input
@@ -462,7 +465,7 @@ export default function RepairsPage() {
                 value={dateRangeEnd}
                 onChange={(e) => setDateRangeEnd(e.target.value)}
                 min={dateRangeStart}
-                className="w-full"
+                className="w-full border-slate-600/80 bg-slate-950/70 text-slate-100 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
               />
             </div>
           </div>
@@ -471,7 +474,7 @@ export default function RepairsPage() {
         {/* Aktif Filtreler */}
         {(companyFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all' || dateFilter !== 'all') && (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground">Aktif Filtreler:</span>
+            <span className="text-sm text-slate-300">Aktif Filtreler:</span>
             {companyFilter !== 'all' && (
               <Badge variant="secondary" className="cursor-pointer" onClick={() => setCompanyFilter('all')}>
                 Firma: {companyFilter} ✕
@@ -521,7 +524,7 @@ export default function RepairsPage() {
                 setDateRangeStart('')
                 setDateRangeEnd('')
               }}
-              className="text-xs"
+              className="text-xs text-slate-200 hover:bg-slate-800/70 hover:text-slate-100"
             >
               Tümünü Temizle
             </Button>
@@ -532,7 +535,7 @@ export default function RepairsPage() {
       {/* İstatistik Kartları */}
       <div className="mb-6 space-y-2">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-md bg-amber-500 p-3 text-white">
+          <div className="liquid-stat-card liquid-amber p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">TAMIRDE OLANLAR</p>
@@ -540,9 +543,9 @@ export default function RepairsPage() {
               </div>
               <Wrench className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Aktif tamir sureci devam ediyor</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Aktif tamir sureci devam ediyor</div>
           </div>
-          <div className="rounded-md bg-emerald-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-emerald p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">TAMAMLANANLAR</p>
@@ -550,9 +553,9 @@ export default function RepairsPage() {
               </div>
               <CheckCircle className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Onarimi biten ticketlar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Onarimi biten ticketlar</div>
           </div>
-          <div className="rounded-md bg-slate-900 p-3 text-white">
+          <div className="liquid-stat-card liquid-slate p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">ISLEME ALINANLAR</p>
@@ -560,9 +563,9 @@ export default function RepairsPage() {
               </div>
               <Calendar className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Yeni alinan cihaz kayitlari</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Yeni alinan cihaz kayitlari</div>
           </div>
-          <div className="rounded-md bg-red-500 p-3 text-white">
+          <div className="liquid-stat-card liquid-rose p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">TAMIR EDILEMEZ</p>
@@ -570,11 +573,11 @@ export default function RepairsPage() {
               </div>
               <XCircle className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Reddedilen veya iade edilenler</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Reddedilen veya iade edilenler</div>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-md bg-fuchsia-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-fuchsia p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">TOPLAM TAMIR</p>
@@ -582,9 +585,9 @@ export default function RepairsPage() {
               </div>
               <Wrench className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Tum tamir ticket kayitlari</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Tum tamir ticket kayitlari</div>
           </div>
-          <div className="rounded-md bg-cyan-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-cyan p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">BU AY</p>
@@ -592,9 +595,9 @@ export default function RepairsPage() {
               </div>
               <Calendar className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Bu ay acilan kayitlar</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Bu ay acilan kayitlar</div>
           </div>
-          <div className="rounded-md bg-blue-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-blue p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">PARCA BEKLEYEN</p>
@@ -602,9 +605,9 @@ export default function RepairsPage() {
               </div>
               <Clock className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Parca tedarik asamasinda</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Parca tedarik asamasinda</div>
           </div>
-          <div className="rounded-md bg-indigo-600 p-3 text-white">
+          <div className="liquid-stat-card liquid-indigo p-3 text-slate-50">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold">TEST ASAMASI</p>
@@ -612,16 +615,16 @@ export default function RepairsPage() {
               </div>
               <Search className="h-7 w-7" />
             </div>
-            <div className="mt-2 border-t border-white/30 pt-2 text-xs">Teslim oncesi test surecinde</div>
+            <div className="mt-2 border-t border-white/25 pt-2 text-xs">Teslim oncesi test surecinde</div>
           </div>
         </div>
       </div>
 
       {/* Tablo */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Tamir Listesi</CardTitle>
-          <CardDescription>
+      <Card className="border-slate-700/70 bg-slate-900/70 shadow-[0_20px_45px_-35px_rgba(15,23,42,0.95)]">
+        <CardHeader className="border-b border-slate-700/60 pb-4">
+          <CardTitle className="text-slate-100">Tamir Listesi</CardTitle>
+          <CardDescription className="text-slate-300">
             Toplam {sortedFilteredRepairs.length} kayıt gösteriliyor (tamir edilenler kapalı olarak listelenir)
           </CardDescription>
         </CardHeader>
@@ -629,30 +632,30 @@ export default function RepairsPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Tamir No</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Firma</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Müşteri</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Cihaz</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Seri No</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Öncelik</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Olusturma Tarihi</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Alınma Tarihi</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Teknisyen</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Musteri Onayi</th>
-                  <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Islem</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Garanti</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">İşlemler</th>
+                <tr className="border-b border-slate-700/70 bg-slate-800/85">
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Tamir No</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Firma</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Müşteri</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Cihaz</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Seri No</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Durum</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Öncelik</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Olusturma Tarihi</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Alınma Tarihi</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Teknisyen</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Musteri Onayi</th>
+                  <th className="h-12 px-4 text-center align-middle font-medium text-slate-300">Islem</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">Garanti</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-slate-300">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedRepairs.map((repair) => (
                   <tr
                     key={repair.id}
-                    className={`border-b transition-colors hover:bg-muted/50 ${
+                    className={`border-b border-slate-700/70 text-slate-100 transition-colors hover:bg-slate-800/45 ${
                       isClosedRepair(repair.status)
-                        ? 'bg-muted/40 text-muted-foreground border-l-4 border-l-muted-foreground/40'
+                        ? 'bg-slate-800/35 text-slate-400 border-l-4 border-l-slate-500/50'
                         : ''
                     }`}
                   >
@@ -723,12 +726,16 @@ export default function RepairsPage() {
                     <td className="p-4 align-middle">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-8 gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1 border-slate-600/80 bg-slate-900/45 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
+                          >
                             Islemler
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuContent align="end" className="w-44 border-slate-700/80 bg-slate-900 text-slate-100">
                           <DropdownMenuItem onClick={() => router.push(`/dashboard/repairs/${repair.id}`)}>
                             <Eye className="h-4 w-4 mr-2" />
                             Goruntule
@@ -753,14 +760,14 @@ export default function RepairsPage() {
 
             {paginatedRepairs.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">Kayıt bulunamadı</p>
+                <p className="text-slate-300">Kayıt bulunamadı</p>
               </div>
             )}
 
             {/* Sayfalama */}
             {sortedFilteredRepairs.length > 0 && (
               <div className="flex items-center justify-between px-2 py-4">
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-slate-300">
                   {paginatedRepairs.length} kayıt gösteriliyor (toplam {sortedFilteredRepairs.length})
                 </div>
                 <div className="flex items-center space-x-2">
@@ -769,10 +776,11 @@ export default function RepairsPage() {
                     size="sm"
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
+                    className="border-slate-600/80 bg-slate-900/45 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
                   >
                     Önceki
                   </Button>
-                  <span className="text-sm">
+                  <span className="text-sm text-slate-200">
                     Sayfa {currentPage} / {totalPages}
                   </span>
                   <Button
@@ -780,6 +788,7 @@ export default function RepairsPage() {
                     size="sm"
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
+                    className="border-slate-600/80 bg-slate-900/45 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
                   >
                     Sonraki
                   </Button>

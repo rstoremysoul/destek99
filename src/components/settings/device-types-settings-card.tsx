@@ -70,9 +70,9 @@ export function DeviceTypesSettingsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Cihaz Turu Yonetimi</CardTitle>
+    <Card className="border-slate-700/70 bg-slate-900/70 shadow-[0_20px_45px_-35px_rgba(15,23,42,0.95)]">
+      <CardHeader className="border-b border-slate-700/60 pb-4">
+        <CardTitle className="text-slate-100">Cihaz Turu Yonetimi</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
@@ -83,15 +83,20 @@ export function DeviceTypesSettingsCard() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') addBrand()
             }}
+            className="border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
           />
-          <Button onClick={addBrand} disabled={loading}>
+          <Button
+            onClick={addBrand}
+            disabled={loading}
+            className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+          >
             Ekle
           </Button>
         </div>
 
-        <div className="border rounded-md overflow-hidden">
+        <div className="overflow-hidden rounded-md border border-slate-700/70 bg-slate-900/50">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50">
+            <thead className="bg-slate-800/85 text-slate-200">
               <tr>
                 <th className="text-left p-3">Cihaz Turu</th>
                 <th className="text-left p-3">Durum</th>
@@ -100,7 +105,7 @@ export function DeviceTypesSettingsCard() {
             </thead>
             <tbody>
               {brands.map((b) => (
-                <tr key={b.id} className="border-t">
+                <tr key={b.id} className="border-t border-slate-700/70 text-slate-100 transition-colors hover:bg-slate-800/45">
                   <td className="p-3">{b.name}</td>
                   <td className="p-3">
                     <Badge variant={b.active ? 'default' : 'secondary'}>
@@ -108,7 +113,12 @@ export function DeviceTypesSettingsCard() {
                     </Badge>
                   </td>
                   <td className="p-3 text-right">
-                    <Button variant="outline" size="sm" onClick={() => toggleBrandActive(b)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleBrandActive(b)}
+                      className="border-slate-600/80 bg-slate-900/40 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
+                    >
                       {b.active ? 'Pasiflestir' : 'Aktiflestir'}
                     </Button>
                   </td>

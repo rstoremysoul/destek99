@@ -258,10 +258,10 @@ export function EquivalentDeviceFormDialog({
 
   const getLocationColor = (location: string) => {
     switch (location) {
-      case 'in_warehouse': return 'bg-green-100 text-green-800 border-green-300'
-      case 'on_site_service': return 'bg-blue-100 text-blue-800 border-blue-300'
-      case 'at_customer': return 'bg-purple-100 text-purple-800 border-purple-300'
-      default: return 'bg-gray-100 text-gray-800 border-gray-300'
+      case 'in_warehouse': return 'bg-emerald-500/20 text-emerald-200 border-emerald-400/70'
+      case 'on_site_service': return 'bg-cyan-500/20 text-cyan-200 border-cyan-400/70'
+      case 'at_customer': return 'bg-violet-500/20 text-violet-200 border-violet-400/70'
+      default: return 'bg-slate-800 text-slate-200 border-slate-600'
     }
   }
 
@@ -285,12 +285,12 @@ export function EquivalentDeviceFormDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border border-slate-700/80 bg-slate-950/95 text-slate-100">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               {mode === 'edit' ? 'Muadil Cihazı Düzenle' : 'Yeni Muadil Cihaz'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-slate-300">
               {mode === 'edit'
                 ? 'Mevcut muadil cihaz kaydını güncelleyin.'
                 : 'Yeni bir muadil cihaz kaydı oluşturun. Tüm alanları dikkatlice doldurun.'}
@@ -300,11 +300,11 @@ export function EquivalentDeviceFormDialog({
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid gap-4">
               {/* Cihaz Bilgileri */}
-              <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <h3 className="font-semibold text-slate-900">Cihaz Bilgileri</h3>
+              <div className="space-y-4 rounded-lg border border-slate-700/80 bg-slate-900/70 p-4">
+                <h3 className="font-semibold text-slate-100">Cihaz Bilgileri</h3>
 
                 <div className="space-y-2">
-                  <Label htmlFor="deviceName" className="text-sm font-medium">
+                  <Label htmlFor="deviceName" className="text-sm font-medium text-slate-200">
                     Cihaz Adı *
                   </Label>
                   <Input
@@ -313,13 +313,13 @@ export function EquivalentDeviceFormDialog({
                     onChange={(e) => setFormData({ ...formData, deviceName: e.target.value })}
                     placeholder="Örn: Muadil RobotPOS Yazıcı - 1"
                     required
-                    className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
+                    className="border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
                   />
                 </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="brand" className="text-sm font-medium">
+                  <Label htmlFor="brand" className="text-sm font-medium text-slate-200">
                     Marka *
                     </Label>
                     <div className="relative">
@@ -330,16 +330,16 @@ export function EquivalentDeviceFormDialog({
                           setBrandSearch('')
                         }}
                       >
-                        <SelectTrigger className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                        <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
                           <SelectValue placeholder="Marka seçin" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
                           <div className="px-2 pb-2">
                             <Input
                               placeholder="Marka ara..."
                               value={brandSearch}
                               onChange={(e) => setBrandSearch(e.target.value)}
-                              className="h-8"
+                              className="h-8 border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400"
                             />
                           </div>
                           {filteredBrands.map((brand) => (
@@ -348,20 +348,20 @@ export function EquivalentDeviceFormDialog({
                             </SelectItem>
                           ))}
                           {filteredBrands.length === 0 && (
-                            <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            <div className="px-2 py-6 text-center text-sm text-slate-300">
                               Marka bulunamadı
                             </div>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-400">
                       Listede yoksa yöneticinize bildirin
                     </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="model" className="text-sm font-medium">
+                  <Label htmlFor="model" className="text-sm font-medium text-slate-200">
                     Model *
                     </Label>
                     <Select
@@ -372,17 +372,17 @@ export function EquivalentDeviceFormDialog({
                       }}
                       disabled={!formData.brand}
                     >
-                      <SelectTrigger className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                      <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
                         <SelectValue placeholder={formData.brand ? "Model seçin" : "Önce marka seçin"} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
                         {formData.brand && (
                           <div className="px-2 pb-2">
                             <Input
                               placeholder="Model ara..."
                               value={modelSearch}
                               onChange={(e) => setModelSearch(e.target.value)}
-                              className="h-8"
+                              className="h-8 border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400"
                             />
                           </div>
                         )}
@@ -392,20 +392,20 @@ export function EquivalentDeviceFormDialog({
                           </SelectItem>
                         ))}
                         {filteredModels.length === 0 && formData.brand && (
-                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                          <div className="px-2 py-6 text-center text-sm text-slate-300">
                             Model bulunamadı
                           </div>
                         )}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-400">
                       Listede yoksa yöneticinize bildirin
                     </p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="serialNumber" className="text-sm font-medium">
+                <Label htmlFor="serialNumber" className="text-sm font-medium text-slate-200">
                   Seri Numarası *
                 </Label>
                   <Input
@@ -418,12 +418,12 @@ export function EquivalentDeviceFormDialog({
                     onBlur={handleSerialNumberBlur}
                     placeholder="Cihazın seri numarasını girin"
                     required
-                    className={`border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 ${
+                    className={`border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40 ${
                       serialError ? 'border-red-500 focus:border-red-500' : ''
                     }`}
                   />
                   {serialError && (
-                    <div className="flex items-center gap-2 text-sm text-red-600">
+                    <div className="flex items-center gap-2 text-sm text-red-300">
                       <AlertCircle className="h-4 w-4" />
                       <span>{serialError}</span>
                     </div>
@@ -432,11 +432,11 @@ export function EquivalentDeviceFormDialog({
             </div>
 
             {/* Konum ve Durum */}
-            <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <h3 className="font-semibold text-slate-900">Konum ve Durum</h3>
+            <div className="space-y-4 rounded-lg border border-slate-700/80 bg-slate-900/70 p-4">
+              <h3 className="font-semibold text-slate-100">Konum ve Durum</h3>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Muadil Konum *</Label>
+                  <Label className="text-sm font-medium text-slate-200">Muadil Konum *</Label>
                   <div className="grid grid-cols-3 gap-3">
                     {(['in_warehouse', 'on_site_service', 'at_customer'] as const).map((loc) => (
                       <button
@@ -446,7 +446,7 @@ export function EquivalentDeviceFormDialog({
                         className={`p-3 rounded-lg border-2 transition-all ${
                           formData.currentLocation === loc
                             ? `${getLocationColor(loc)} border-current font-semibold`
-                            : 'bg-white border-slate-200 hover:border-slate-300'
+                            : 'bg-slate-950/70 border-slate-700 text-slate-300 hover:border-slate-500'
                         }`}
                       >
                         {getLocationText(loc)}
@@ -457,17 +457,17 @@ export function EquivalentDeviceFormDialog({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="recordStatus" className="text-sm font-medium">
+                    <Label htmlFor="recordStatus" className="text-sm font-medium text-slate-200">
                       Kayıt Durumu *
                     </Label>
                     <Select
                       value={formData.recordStatus}
                       onValueChange={(value: any) => setFormData({ ...formData, recordStatus: value })}
                     >
-                      <SelectTrigger className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                      <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
                         <SelectItem value="open">Açık</SelectItem>
                         <SelectItem value="on_hold">Beklemede</SelectItem>
                         <SelectItem value="closed">Kapalı</SelectItem>
@@ -476,23 +476,23 @@ export function EquivalentDeviceFormDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="status" className="text-sm font-medium">
+                    <Label htmlFor="status" className="text-sm font-medium text-slate-200">
                       Durum *
                     </Label>
                     <Select
                       value={formData.status}
                       onValueChange={(value: any) => setFormData({ ...formData, status: value })}
                     >
-                      <SelectTrigger className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                      <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
                         <SelectItem value="available">Müsait</SelectItem>
                         <SelectItem value="in_use">Kullanımda</SelectItem>
                         <SelectItem value="in_maintenance">Bakımda</SelectItem>
                         <SelectItem value="reserved">Rezerve</SelectItem>
                         <SelectItem value="retired">Emekli</SelectItem>
-                        <SelectItem value="passive" className="text-red-600 font-semibold">
+                        <SelectItem value="passive" className="font-semibold text-red-300">
                           Pasif (Yönetici Onayı Gerekli)
                         </SelectItem>
                       </SelectContent>
@@ -500,17 +500,17 @@ export function EquivalentDeviceFormDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="condition" className="text-sm font-medium">
+                    <Label htmlFor="condition" className="text-sm font-medium text-slate-200">
                       Kondisyon *
                     </Label>
                     <Select
                       value={formData.condition}
                       onValueChange={(value: any) => setFormData({ ...formData, condition: value })}
                     >
-                      <SelectTrigger className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                      <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
                         <SelectItem value="new">Yeni</SelectItem>
                         <SelectItem value="excellent">Mükemmel</SelectItem>
                         <SelectItem value="good">İyi</SelectItem>
@@ -523,11 +523,11 @@ export function EquivalentDeviceFormDialog({
               </div>
 
               {/* Atama Bilgileri */}
-              <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <h3 className="font-semibold text-slate-900">Atama Bilgileri</h3>
+              <div className="space-y-4 rounded-lg border border-slate-700/80 bg-slate-900/70 p-4">
+                <h3 className="font-semibold text-slate-100">Atama Bilgileri</h3>
 
                 <div className="space-y-2">
-                  <Label htmlFor="assignedTo" className="text-sm font-medium">
+                  <Label htmlFor="assignedTo" className="text-sm font-medium text-slate-200">
                     Atanacağı Lokasyon
                   </Label>
                   <div className="flex gap-2">
@@ -535,17 +535,17 @@ export function EquivalentDeviceFormDialog({
                       value={formData.assignedToId}
                       onValueChange={(value) => setFormData({ ...formData, assignedToId: value })}
                     >
-                      <SelectTrigger className="flex-1 border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                      <SelectTrigger className="flex-1 border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
                         <SelectValue placeholder="Lokasyon seçin (opsiyonel)" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="border-slate-700/80 bg-slate-900 text-slate-100">
                         {locations.map((location) => (
                           <SelectItem key={location.id} value={location.id}>
                             {location.name} - {location.address}
                           </SelectItem>
                         ))}
                         {locations.length === 0 && (
-                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                          <div className="px-2 py-6 text-center text-sm text-slate-300">
                             Kayıtlı lokasyon yok
                           </div>
                         )}
@@ -555,7 +555,7 @@ export function EquivalentDeviceFormDialog({
                       type="button"
                       variant="outline"
                       onClick={() => setIsLocationDialogOpen(true)}
-                      className="shrink-0"
+                      className="shrink-0 border-slate-600/80 bg-slate-900/45 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Yeni Adres
@@ -564,7 +564,7 @@ export function EquivalentDeviceFormDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="assignedDate" className="text-sm font-medium">
+                  <Label htmlFor="assignedDate" className="text-sm font-medium text-slate-200">
                     Atanma Tarihi
                   </Label>
                   <Input
@@ -572,18 +572,18 @@ export function EquivalentDeviceFormDialog({
                     type="date"
                     value={formData.assignedDate}
                     onChange={(e) => setFormData({ ...formData, assignedDate: e.target.value })}
-                    className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
+                    className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
                   />
                 </div>
               </div>
 
               {/* Tarih Bilgileri */}
-              <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <h3 className="font-semibold text-slate-900">Tarih Bilgileri</h3>
+              <div className="space-y-4 rounded-lg border border-slate-700/80 bg-slate-900/70 p-4">
+                <h3 className="font-semibold text-slate-100">Tarih Bilgileri</h3>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="purchaseDate" className="text-sm font-medium">
+                    <Label htmlFor="purchaseDate" className="text-sm font-medium text-slate-200">
                       Satın Alma Tarihi
                     </Label>
                     <Input
@@ -591,12 +591,12 @@ export function EquivalentDeviceFormDialog({
                       type="date"
                       value={formData.purchaseDate}
                       onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                      className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
+                      className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="warrantyEnd" className="text-sm font-medium">
+                    <Label htmlFor="warrantyEnd" className="text-sm font-medium text-slate-200">
                       Garanti Bitiş Tarihi
                     </Label>
                     <Input
@@ -604,18 +604,18 @@ export function EquivalentDeviceFormDialog({
                       type="date"
                       value={formData.warrantyEnd}
                       onChange={(e) => setFormData({ ...formData, warrantyEnd: e.target.value })}
-                      className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
+                      className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Notlar */}
-              <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <h3 className="font-semibold text-slate-900">Notlar ve Diğer Bilgiler</h3>
+              <div className="space-y-4 rounded-lg border border-slate-700/80 bg-slate-900/70 p-4">
+                <h3 className="font-semibold text-slate-100">Notlar ve Diğer Bilgiler</h3>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes" className="text-sm font-medium">
+                  <Label htmlFor="notes" className="text-sm font-medium text-slate-200">
                     Notlar
                   </Label>
                   <Textarea
@@ -623,18 +623,18 @@ export function EquivalentDeviceFormDialog({
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Cihaz hakkında ek notlar girin"
-                    className="border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 min-h-[100px]"
+                    className="min-h-[100px] border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
                   />
                 </div>
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="border-t border-slate-700/70 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="border-slate-200 hover:bg-slate-50"
+                className="border-slate-600/80 bg-slate-900/45 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
               >
                 İptal
               </Button>

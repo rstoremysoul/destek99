@@ -74,9 +74,9 @@ export function TechniciansSettingsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Teknisyen Yonetimi</CardTitle>
+    <Card className="border-slate-700/70 bg-slate-900/70 shadow-[0_20px_45px_-35px_rgba(15,23,42,0.95)]">
+      <CardHeader className="border-b border-slate-700/60 pb-4">
+        <CardTitle className="text-slate-100">Teknisyen Yonetimi</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
@@ -87,15 +87,20 @@ export function TechniciansSettingsCard() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') addTechnician()
             }}
+            className="border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
           />
-          <Button onClick={addTechnician} disabled={loading}>
+          <Button
+            onClick={addTechnician}
+            disabled={loading}
+            className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+          >
             Ekle
           </Button>
         </div>
 
-        <div className="border rounded-md overflow-hidden">
+        <div className="overflow-hidden rounded-md border border-slate-700/70 bg-slate-900/50">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50">
+            <thead className="bg-slate-800/85 text-slate-200">
               <tr>
                 <th className="text-left p-3">Teknisyen</th>
                 <th className="text-left p-3">Durum</th>
@@ -104,7 +109,7 @@ export function TechniciansSettingsCard() {
             </thead>
             <tbody>
               {technicians.map((tech) => (
-                <tr key={tech.id} className="border-t">
+                <tr key={tech.id} className="border-t border-slate-700/70 text-slate-100 transition-colors hover:bg-slate-800/45">
                   <td className="p-3">{tech.name}</td>
                   <td className="p-3">
                     <Badge variant={tech.active ? 'default' : 'secondary'}>
@@ -112,7 +117,12 @@ export function TechniciansSettingsCard() {
                     </Badge>
                   </td>
                   <td className="p-3 text-right">
-                    <Button variant="outline" size="sm" onClick={() => toggleTechnicianActive(tech)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleTechnicianActive(tech)}
+                      className="border-slate-600/80 bg-slate-900/40 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
+                    >
                       {tech.active ? 'Pasiflestir' : 'Aktiflestir'}
                     </Button>
                   </td>

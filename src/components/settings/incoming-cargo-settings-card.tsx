@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -117,22 +117,40 @@ export function IncomingCargoSettingsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gelen Kargo Akis Ayarlari</CardTitle>
+    <Card className="border-slate-700/70 bg-slate-900/70 shadow-[0_20px_45px_-35px_rgba(15,23,42,0.95)]">
+      <CardHeader className="border-b border-slate-700/60 pb-4">
+        <CardTitle className="text-slate-100">Gelen Kargo Akis Ayarlari</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <div className="text-sm font-semibold">Firma Listesi</div>
+          <div className="text-sm font-semibold text-slate-100">Firma Listesi</div>
           <div className="flex gap-2">
-            <Input value={newCompany} onChange={(e) => setNewCompany(e.target.value)} placeholder="Yeni firma adı" />
-            <Button onClick={addCompany}>Ekle</Button>
+            <Input
+              value={newCompany}
+              onChange={(e) => setNewCompany(e.target.value)}
+              placeholder="Yeni firma adi"
+              className="border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
+            />
+            <Button
+              onClick={addCompany}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+            >
+              Ekle
+            </Button>
           </div>
           <div className="space-y-2">
             {companies.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded border p-2">
+              <div
+                key={c.id}
+                className="flex items-center justify-between rounded border border-slate-700/70 bg-slate-900/50 p-2 text-slate-100"
+              >
                 <span>{c.name}</span>
-                <Button variant="outline" size="sm" onClick={() => toggleCompany(c)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleCompany(c)}
+                  className="border-slate-600/80 bg-slate-900/40 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
+                >
                   <Badge variant={c.active ? 'default' : 'secondary'}>{c.active ? 'Aktif' : 'Pasif'}</Badge>
                 </Button>
               </div>
@@ -141,26 +159,46 @@ export function IncomingCargoSettingsCard() {
         </div>
 
         <div className="space-y-2">
-          <div className="text-sm font-semibold">Sube Listesi</div>
+          <div className="text-sm font-semibold text-slate-100">Sube Listesi</div>
           <div className="flex gap-2">
             <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-              <SelectTrigger className="w-[260px]">
+              <SelectTrigger className="w-[260px] border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
                 <SelectValue placeholder="Firma secin" />
               </SelectTrigger>
               <SelectContent>
                 {companies.filter((c) => c.active).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Input value={newBranch} onChange={(e) => setNewBranch(e.target.value)} placeholder="Yeni şube adı" />
-            <Button onClick={addBranch}>Ekle</Button>
+            <Input
+              value={newBranch}
+              onChange={(e) => setNewBranch(e.target.value)}
+              placeholder="Yeni sube adi"
+              className="border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
+            />
+            <Button
+              onClick={addBranch}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+            >
+              Ekle
+            </Button>
           </div>
           <div className="space-y-2">
             {filteredBranches.map((b) => (
-              <div key={b.id} className="flex items-center justify-between rounded border p-2">
+              <div
+                key={b.id}
+                className="flex items-center justify-between rounded border border-slate-700/70 bg-slate-900/50 p-2 text-slate-100"
+              >
                 <span>{b.name}</span>
-                <Button variant="outline" size="sm" onClick={() => toggleBranch(b)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleBranch(b)}
+                  className="border-slate-600/80 bg-slate-900/40 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
+                >
                   <Badge variant={b.active ? 'default' : 'secondary'}>{b.active ? 'Aktif' : 'Pasif'}</Badge>
                 </Button>
               </div>
@@ -169,16 +207,34 @@ export function IncomingCargoSettingsCard() {
         </div>
 
         <div className="space-y-2">
-          <div className="text-sm font-semibold">Bildirilen Ariza Secenekleri</div>
+          <div className="text-sm font-semibold text-slate-100">Bildirilen Ariza Secenekleri</div>
           <div className="flex gap-2">
-            <Input value={newFault} onChange={(e) => setNewFault(e.target.value)} placeholder="Yeni arıza seçeneği" />
-            <Button onClick={addFault}>Ekle</Button>
+            <Input
+              value={newFault}
+              onChange={(e) => setNewFault(e.target.value)}
+              placeholder="Yeni ariza secenegi"
+              className="border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
+            />
+            <Button
+              onClick={addFault}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+            >
+              Ekle
+            </Button>
           </div>
           <div className="space-y-2">
             {faults.map((f) => (
-              <div key={f.id} className="flex items-center justify-between rounded border p-2">
+              <div
+                key={f.id}
+                className="flex items-center justify-between rounded border border-slate-700/70 bg-slate-900/50 p-2 text-slate-100"
+              >
                 <span>{f.name}</span>
-                <Button variant="outline" size="sm" onClick={() => toggleFault(f)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleFault(f)}
+                  className="border-slate-600/80 bg-slate-900/40 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
+                >
                   <Badge variant={f.active ? 'default' : 'secondary'}>{f.active ? 'Aktif' : 'Pasif'}</Badge>
                 </Button>
               </div>
