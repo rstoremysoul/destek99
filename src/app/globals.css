@@ -9,6 +9,107 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .themed-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(71, 85, 105, 0.7) rgba(15, 23, 42, 0.25);
+  }
+
+  .themed-scrollbar::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+  }
+
+  .themed-scrollbar::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.28);
+    border-radius: 9999px;
+  }
+
+  .themed-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(56, 189, 248, 0.65), rgba(14, 165, 233, 0.4));
+    border-radius: 9999px;
+    border: 2px solid rgba(15, 23, 42, 0.28);
+  }
+
+  .themed-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(103, 232, 249, 0.8), rgba(14, 165, 233, 0.55));
+  }
+}
+
+@layer components {
+  .dashboard-content .container {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .login-stage {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 12% 16%, rgba(56, 189, 248, 0.2), transparent 30%),
+      radial-gradient(circle at 86% 20%, rgba(59, 130, 246, 0.2), transparent 32%),
+      radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.14), transparent 38%),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 1));
+  }
+
+  .glow-beam-frame {
+    position: relative;
+    border-radius: 1rem;
+    padding: 1px;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .glow-beam-frame::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 220%;
+    height: 220%;
+    transform: translate(-50%, -50%);
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      transparent 300deg,
+      rgba(56, 189, 248, 0.95) 330deg,
+      rgba(16, 185, 129, 0.9) 344deg,
+      rgba(96, 165, 250, 0.95) 360deg
+    );
+    animation: login-beam-rotate 5.5s linear infinite;
+    filter: blur(8px);
+    opacity: 0.95;
+    z-index: 0;
+  }
+
+  .glow-beam-frame::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .glow-beam-content {
+    position: relative;
+    z-index: 2;
+    border-radius: calc(1rem - 1px);
+  }
+}
+
+@keyframes login-beam-rotate {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 
 
@@ -42,30 +143,30 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --background: 223 41% 7%;
+    --foreground: 213 31% 94%;
+    --card: 222 36% 10%;
+    --card-foreground: 213 31% 94%;
+    --popover: 222 36% 10%;
+    --popover-foreground: 213 31% 94%;
+    --primary: 212 100% 62%;
+    --primary-foreground: 224 51% 10%;
+    --secondary: 221 24% 17%;
+    --secondary-foreground: 210 22% 88%;
+    --muted: 221 22% 15%;
+    --muted-foreground: 216 15% 70%;
+    --accent: 196 82% 18%;
+    --accent-foreground: 191 83% 76%;
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 22%;
+    --input: 220 20% 22%;
+    --ring: 212 100% 62%;
+    --chart-1: 197 92% 60%;
+    --chart-2: 160 72% 46%;
+    --chart-3: 220 95% 66%;
+    --chart-4: 186 89% 62%;
+    --chart-5: 30 92% 64%;
   }
 }
 
@@ -77,5 +178,12 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  .dark body {
+    background-image:
+      radial-gradient(circle at 14% 10%, rgba(56, 189, 248, 0.12), transparent 30%),
+      radial-gradient(circle at 86% 14%, rgba(59, 130, 246, 0.12), transparent 30%),
+      radial-gradient(circle at 52% 86%, rgba(16, 185, 129, 0.12), transparent 34%);
+    background-attachment: fixed;
   }
 }

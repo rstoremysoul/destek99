@@ -119,9 +119,9 @@ function statusText(status: ServiceRow['status']) {
 }
 
 function priorityClass(priority: ServiceRow['priority']) {
-  if (priority === 'yuksek') return 'bg-red-100 text-red-700'
-  if (priority === 'orta') return 'bg-amber-100 text-amber-700'
-  return 'bg-slate-100 text-slate-700'
+  if (priority === 'yuksek') return 'bg-red-100 text-red-700 dark:border dark:border-red-400/30 dark:bg-red-500/18 dark:text-red-100'
+  if (priority === 'orta') return 'bg-orange-200 text-orange-900 dark:border dark:border-orange-300/45 dark:bg-orange-500/28 dark:text-orange-50'
+  return 'bg-slate-100 text-slate-700 dark:border dark:border-slate-500/30 dark:bg-slate-700/40 dark:text-slate-100'
 }
 
 function priorityText(priority: ServiceRow['priority']) {
@@ -235,7 +235,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border bg-white p-4">
+      <div className="rounded-xl border border-border/70 bg-card/80 p-4 shadow-sm shadow-black/5 backdrop-blur-sm">
         <h1 className="text-xl font-bold tracking-tight">Servis Dashboard</h1>
         <p className="text-sm text-muted-foreground">
           {user?.name ? `${user.name} icin genel ozet` : 'Genel durum ozeti'} - Toplam {totalCount} aktif kayit
@@ -272,10 +272,10 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="rounded-md border bg-white p-3">
+      <div className="rounded-md border border-border/70 bg-card/80 p-3 shadow-sm shadow-black/5 backdrop-blur-sm">
         <div className="mb-3 flex flex-wrap gap-2">
           {actionTiles.map((item) => (
-            <Button key={item.label} variant="outline" size="sm" className="h-9 gap-2 bg-slate-50">
+            <Button key={item.label} variant="outline" size="sm" className="h-9 gap-2 bg-slate-50 dark:bg-slate-900/70 dark:hover:bg-slate-800/80">
               <item.icon className="h-4 w-4" />
               <span>{item.label}</span>
               {typeof item.count === 'number' ? <Badge variant="secondary">{item.count} ADET</Badge> : null}
@@ -283,10 +283,10 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="themed-scrollbar overflow-x-auto pb-2">
           <table className="w-full min-w-[1220px] border-collapse text-sm">
             <thead>
-              <tr className="bg-amber-50 text-left">
+              <tr className="bg-amber-50 text-left dark:bg-slate-900/70 dark:text-slate-200">
                 <th className="px-3 py-2 font-semibold">TICKET</th>
                 <th className="px-3 py-2 font-semibold">MUSTERI</th>
                 <th className="px-3 py-2 font-semibold">URUN GRUBU</th>
@@ -319,7 +319,12 @@ export default function DashboardPage() {
                 </tr>
               ) : (
                 rows.map((row) => (
-                  <tr key={row.id} className={`border-t hover:bg-slate-50 ${row.isClosed ? 'bg-slate-100/80 text-slate-600' : ''}`}>
+                  <tr
+                    key={row.id}
+                    className={`border-t transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60 ${
+                      row.isClosed ? 'bg-slate-100/80 text-slate-600 dark:bg-slate-900/75 dark:text-slate-400' : ''
+                    }`}
+                  >
                     <td className="px-3 py-2 font-semibold">
                       <div className="flex items-center gap-2">
                         <span>{row.ticketNo}</span>

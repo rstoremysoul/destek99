@@ -341,15 +341,16 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50">
+      <DialogContent className="max-w-5xl overflow-hidden border-slate-700/70 bg-slate-950/95 text-slate-100 shadow-[0_32px_80px_-40px_rgba(8,145,178,0.85)] backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-0 opacity-90 [background-image:radial-gradient(circle_at_12%_12%,rgba(56,189,248,0.18),transparent_32%),radial-gradient(circle_at_88%_18%,rgba(59,130,246,0.16),transparent_30%),radial-gradient(circle_at_52%_88%,rgba(16,185,129,0.12),transparent_34%)]" />
         <DialogHeader>
-          <DialogTitle>Yeni Gelen Kargo - Adim Adim Kayit</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-slate-100">Yeni Gelen Kargo - Adim Adim Kayit</DialogTitle>
+          <DialogDescription className="text-slate-300">
             Her adimi tamamlayarak kaydi net ve tutarli sekilde olusturun.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="relative z-10 space-y-3">
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
             {STEP_TITLES.map((title, idx) => {
               const done = idx < step
@@ -359,10 +360,10 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                   key={title}
                   className={`rounded-lg border px-2 py-2 text-xs transition-all ${
                     active
-                      ? 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm'
+                      ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-100 shadow-[0_14px_28px_-22px_rgba(16,185,129,0.9)]'
                       : done
-                        ? 'border-slate-300 bg-slate-100 text-slate-700'
-                        : 'border-slate-200 bg-white text-slate-500'
+                        ? 'border-slate-600 bg-slate-800/90 text-slate-200'
+                        : 'border-slate-700 bg-slate-900/75 text-slate-400'
                   }`}
                 >
                   <div className="font-semibold">Adim {idx + 1}</div>
@@ -371,15 +372,15 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
               )
             })}
           </div>
-          <div className="h-2 rounded bg-slate-200">
-            <div className="h-2 rounded bg-emerald-500 transition-all" style={{ width: `${((step + 1) / STEP_TITLES.length) * 100}%` }} />
+          <div className="h-2 rounded bg-slate-800">
+            <div className="h-2 rounded bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 transition-all" style={{ width: `${((step + 1) / STEP_TITLES.length) * 100}%` }} />
           </div>
         </div>
 
-        <div className="space-y-4 py-2">
+        <div className="relative z-10 space-y-4 py-2">
           {step === 0 && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-900">
+              <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/12 px-3 py-2 text-sm text-emerald-100">
                 Once urunun ofise nasil geldigi secilir. Kanal secimine gore tasima adimi otomatik uyarlanir.
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -393,12 +394,12 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                       onClick={() => setChannel(value)}
                       className={`rounded-xl border p-3 text-left transition-all ${
                         selected
-                          ? 'border-emerald-400 bg-emerald-50 shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+                          ? 'border-emerald-400/60 bg-emerald-500/12 shadow-[0_14px_28px_-22px_rgba(16,185,129,0.9)]'
+                          : 'border-slate-700 bg-slate-900/75 hover:border-emerald-400/30 hover:bg-slate-900'
                       }`}
                     >
-                      <div className="text-sm font-semibold text-slate-900">{CHANNEL_LABELS[value]}</div>
-                      <div className="mt-1 text-xs text-slate-600">
+                      <div className="text-sm font-semibold text-slate-100">{CHANNEL_LABELS[value]}</div>
+                      <div className="mt-1 text-xs text-slate-300">
                         {lightweightFlow ? 'Takip no ve kargo firmasi adimi zorunlu degil.' : 'Takip no ve kargo firmasi adimi gerekir.'}
                       </div>
                     </button>
@@ -429,7 +430,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                       </Select>
                     ) : (
                       <div className="space-y-2">
-                        <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                        <div className="rounded-md border border-amber-400/35 bg-amber-500/12 p-2 text-xs text-amber-100">
                           Secilebilir kargo firmasi yok. Ayarlar ekranindan firma ekleyin.
                         </div>
                         <Button
@@ -444,7 +445,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                   </div>
                 </>
               ) : (
-                <div className="rounded-md border p-3 text-sm text-muted-foreground">
+                <div className="rounded-md border border-slate-700 bg-slate-900/70 p-3 text-sm text-slate-300">
                   {CHANNEL_LABELS[channel]} secildigi icin kargo firmasi ve takip no adimi otomatik gecilecek.
                 </div>
               )}
@@ -481,7 +482,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
           {step === 3 && (
             <div className="space-y-3">
               {devices.map((device, index) => (
-                <div key={device.id} className="space-y-3 rounded-md border p-3">
+                <div key={device.id} className="space-y-3 rounded-md border border-slate-700 bg-slate-900/70 p-3">
                   <div className="grid gap-3 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label>Cihaz Adi</Label>
@@ -510,11 +511,11 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                     <Input value={device.serialNumber} onChange={(e) => updateDevice(index, { serialNumber: e.target.value })} />
                   </div>
                   </div>
-                  <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50/70 p-2">
+                  <div className="space-y-2 rounded-md border border-slate-700 bg-slate-900/80 p-2">
                     <Label>Bildirilen Ariza Secenekleri (Cihaz Bazli)</Label>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {activeFaults.map((f) => (
-                        <label key={`${device.id}-${f.id}`} className="flex items-center gap-2 rounded border bg-white p-2 text-sm">
+                        <label key={`${device.id}-${f.id}`} className="flex items-center gap-2 rounded border border-slate-600 bg-slate-950/80 p-2 text-sm text-slate-100 transition-colors hover:bg-slate-900">
                           <Checkbox
                             checked={device.selectedFaultIds.includes(f.id)}
                             onCheckedChange={() => toggleDeviceFault(device.id, f.id)}
@@ -541,7 +542,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
 
           {step === 4 && (
             <div className="space-y-4">
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              <div className="rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-300">
                 Bildirilen ariza secimleri cihaz bazli olarak onceki adimda yapilir.
               </div>
 
@@ -576,7 +577,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
           )}
 
           {step === 5 && (
-            <div className="space-y-2 rounded-md border p-3 text-sm">
+            <div className="space-y-2 rounded-md border border-slate-700 bg-slate-900/70 p-3 text-sm text-slate-200">
               <div><strong>Kanal:</strong> {CHANNEL_LABELS[channel]}</div>
               <div><strong>Takip No:</strong> {requiresTransport ? trackingNumber || '-' : '(otomatik)'}</div>
               <div><strong>Kargo Firmasi:</strong> {requiresTransport ? cargoCompany || '-' : 'Yerinde/Kurulum'}</div>
@@ -588,12 +589,12 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => (step === 0 ? onOpenChange(false) : prevStep())}>Geri</Button>
+        <DialogFooter className="relative z-10">
+          <Button variant="outline" className="border-slate-600 bg-slate-900/80 text-slate-100 hover:bg-slate-800" onClick={() => (step === 0 ? onOpenChange(false) : prevStep())}>Geri</Button>
           {step < STEP_TITLES.length - 1 ? (
-            <Button onClick={nextStep}>Ileri</Button>
+            <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400" onClick={nextStep}>Ileri</Button>
           ) : (
-            <Button onClick={handleSubmit} disabled={submitting}>
+            <Button className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white hover:from-emerald-400 hover:to-cyan-400" onClick={handleSubmit} disabled={submitting}>
               {submitting ? 'Kaydediliyor...' : 'Kaydi Olustur'}
             </Button>
           )}
