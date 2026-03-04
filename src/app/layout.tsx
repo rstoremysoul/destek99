@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="tr">
+    <html lang="tr" className="dark" suppressHydrationWarning>
       <body className="antialiased">
         <Script id="randomuuid-polyfill" strategy="beforeInteractive">
           {`

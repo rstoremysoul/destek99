@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CargoTracking } from '@/types'
 import {
   ArrowLeft,
@@ -20,7 +19,6 @@ import {
   Building2,
   ClipboardList
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
 import { parseCargoVendorMeta } from '@/lib/cargo-vendor-workflow'
 import { parseIncomingCargoFlowMeta } from '@/lib/incoming-cargo-flow'
@@ -119,37 +117,6 @@ export default function CargoDetailPage({ params }: PageProps) {
         </div>
       </div>
     )
-  }
-
-  const handleRecordStatusChange = async (value: 'open' | 'on_hold' | 'closed' | 'device_repair') => {
-    if (!cargo) return
-    if (value === 'device_repair') {
-      setRepairTicketOpen(true)
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/cargo/${cargo.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recordStatus: value,
-        }),
-      })
-
-      if (response.ok) {
-        await fetchCargo()
-      } else {
-        const error = await response.json().catch(() => null)
-        toast.error(error?.error || 'Kayıt durumu güncellenemedi')
-        console.error('Failed to update cargo record status', error)
-      }
-    } catch (error) {
-      toast.error('Kayıt durumu güncellenirken hata oluştu')
-      console.error('Error updating cargo record status:', error)
-    }
   }
 
   const getStatusColor = (status: string) => {
@@ -289,20 +256,6 @@ export default function CargoDetailPage({ params }: PageProps) {
                 Tedarikci Takibinde
               </Button>
             ) : null}
-                    <Select
-              value={cargo.recordStatus === 'ready_to_ship' ? 'open' : (cargo.recordStatus || 'open')}
-              onValueChange={(value: 'open' | 'on_hold' | 'closed' | 'device_repair') => handleRecordStatusChange(value)}
-            >
-              <SelectTrigger className="h-8 w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="open">Açık</SelectItem>
-                <SelectItem value="on_hold">Beklemede</SelectItem>
-                <SelectItem value="device_repair">Cihaz Tamiri</SelectItem>
-                <SelectItem value="closed">Kapalı</SelectItem>
-              </SelectContent>
-            </Select>
             {cargo.recordStatus === 'device_repair' && (
               <Button variant="secondary" size="sm" onClick={() => setRepairTicketOpen(true)}>
                 Ticket Ac

@@ -298,15 +298,16 @@ export function OutgoingCargoWizardDialog({ open, onOpenChange, onSubmit }: Outg
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50">
+      <DialogContent className="max-w-5xl overflow-hidden border-slate-700/70 bg-slate-950/95 text-slate-100 shadow-[0_32px_80px_-40px_rgba(8,145,178,0.85)] backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-0 opacity-90 [background-image:radial-gradient(circle_at_12%_12%,rgba(56,189,248,0.18),transparent_32%),radial-gradient(circle_at_88%_18%,rgba(59,130,246,0.16),transparent_30%),radial-gradient(circle_at_52%_88%,rgba(16,185,129,0.12),transparent_34%)]" />
         <DialogHeader>
-          <DialogTitle>Yeni Giden Kargo - Ticket Uzerinden Transfer</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-slate-100">Yeni Giden Kargo - Ticket Uzerinden Transfer</DialogTitle>
+          <DialogDescription className="text-slate-300">
             Merkez ofisteki acik ticket urununu secin, hedef depoyu belirleyin ve transferi tamamlayin.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="relative z-10 space-y-3">
           <div className="grid grid-cols-3 gap-2">
             {STEP_TITLES.map((title, idx) => {
               const done = idx < step
@@ -316,10 +317,10 @@ export function OutgoingCargoWizardDialog({ open, onOpenChange, onSubmit }: Outg
                   key={title}
                   className={`rounded-lg border px-2 py-2 text-xs transition-all ${
                     active
-                      ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-sm'
+                      ? 'border-blue-400/60 bg-blue-500/15 text-blue-100 shadow-[0_14px_28px_-22px_rgba(59,130,246,0.9)]'
                       : done
-                        ? 'border-slate-300 bg-slate-100 text-slate-700'
-                        : 'border-slate-200 bg-white text-slate-500'
+                        ? 'border-slate-600 bg-slate-800/90 text-slate-200'
+                        : 'border-slate-700 bg-slate-900/75 text-slate-400'
                   }`}
                 >
                   <div className="font-semibold">Adim {idx + 1}</div>
@@ -328,12 +329,12 @@ export function OutgoingCargoWizardDialog({ open, onOpenChange, onSubmit }: Outg
               )
             })}
           </div>
-          <div className="h-2 rounded bg-slate-200">
-            <div className="h-2 rounded bg-blue-500 transition-all" style={{ width: `${((step + 1) / STEP_TITLES.length) * 100}%` }} />
+          <div className="h-2 rounded bg-slate-800">
+            <div className="h-2 rounded bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 transition-all" style={{ width: `${((step + 1) / STEP_TITLES.length) * 100}%` }} />
           </div>
         </div>
 
-        <div className="space-y-4 py-2">
+        <div className="relative z-10 space-y-4 py-2">
           {step === 0 && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -348,12 +349,12 @@ export function OutgoingCargoWizardDialog({ open, onOpenChange, onSubmit }: Outg
                         onClick={() => setSourceLocationId(warehouse.id)}
                         className={`rounded-lg border px-3 py-3 text-left transition ${
                           selected
-                            ? 'border-blue-400 bg-blue-50 text-blue-800'
-                            : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30'
+                            ? 'border-blue-400/60 bg-blue-500/15 text-blue-100'
+                            : 'border-slate-700 bg-slate-900/75 hover:border-blue-400/30 hover:bg-slate-900'
                         }`}
                       >
                         <div className="text-sm font-semibold">{warehouse.name}</div>
-                        <div className="text-xs text-slate-500">{String(warehouse.type || '').toUpperCase()}</div>
+                        <div className="text-xs text-slate-400">{String(warehouse.type || '').toUpperCase()}</div>
                       </button>
                     )
                   })}
@@ -371,7 +372,7 @@ export function OutgoingCargoWizardDialog({ open, onOpenChange, onSubmit }: Outg
 
               <div className="space-y-2">
                 <Label>Depodaki Ticket Urunleri</Label>
-                <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-2">
+                <div className="themed-scrollbar max-h-64 space-y-2 overflow-y-auto rounded-md border border-slate-700 bg-slate-900/70 p-2">
                   {filteredDevices.map((device) => {
                     const selected = selectedEquivalentDeviceIds.includes(device.id)
                     const ticket = ticketBySerial.get(normalize(device.serialNumber))
@@ -382,15 +383,15 @@ export function OutgoingCargoWizardDialog({ open, onOpenChange, onSubmit }: Outg
                         onClick={() => toggleDevice(device.id)}
                         className={`w-full rounded-md border px-3 py-2 text-left transition ${
                           selected
-                            ? 'border-blue-400 bg-blue-50'
-                            : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30'
+                            ? 'border-blue-400/60 bg-blue-500/15'
+                            : 'border-slate-700 bg-slate-950/80 hover:border-blue-400/30 hover:bg-slate-900'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="text-sm font-medium">{device.deviceName} / {device.model}</div>
                           {selected ? <Badge>Secili</Badge> : <Badge variant="outline">Sec</Badge>}
                         </div>
-                        <div className="text-xs text-slate-600">Seri: {device.serialNumber}</div>
+                        <div className="text-xs text-slate-300">Seri: {device.serialNumber}</div>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           {ticket ? <Badge variant="outline">Ticket: {ticket.cargoTrackingNumber}</Badge> : <Badge variant="secondary">Ticket bulunamadi</Badge>}
                         </div>
@@ -451,7 +452,7 @@ export function OutgoingCargoWizardDialog({ open, onOpenChange, onSubmit }: Outg
 
           {step === 2 && (
             <div className="space-y-3">
-              <div className="rounded-lg border bg-slate-50 p-3 text-sm">
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3 text-sm text-slate-200">
                 <div><strong>Kaynak Ticket:</strong> {selectedTicket?.cargoTrackingNumber || 'Eslesme yok'}</div>
                 <div><strong>Kaynak Depo:</strong> {warehouses.find((w) => w.id === sourceLocationId)?.name || '-'}</div>
                 <div><strong>Secili Urun:</strong> {selectedDevices.length} adet</div>
@@ -466,16 +467,16 @@ export function OutgoingCargoWizardDialog({ open, onOpenChange, onSubmit }: Outg
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button type="button" variant="outline" onClick={prevStep} disabled={step === 0 || submitting}>
+        <DialogFooter className="relative z-10 gap-2">
+          <Button type="button" variant="outline" className="border-slate-600 bg-slate-900/80 text-slate-100 hover:bg-slate-800" onClick={prevStep} disabled={step === 0 || submitting}>
             Geri
           </Button>
           {step < STEP_TITLES.length - 1 ? (
-            <Button type="button" onClick={nextStep}>
+            <Button type="button" className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400" onClick={nextStep}>
               Ileri
             </Button>
           ) : (
-            <Button type="button" onClick={handleSubmit} disabled={submitting}>
+            <Button type="button" className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white hover:from-emerald-400 hover:to-cyan-400" onClick={handleSubmit} disabled={submitting}>
               {submitting ? 'Transfer ediliyor...' : 'Transferi Tamamla'}
             </Button>
           )}

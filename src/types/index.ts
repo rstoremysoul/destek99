@@ -143,6 +143,14 @@ export interface CargoTracking {
     branchName: string
     selectedFaultIds: string[]
     selectedFaultNames: string[]
+    deviceFaults?: Array<{
+      deviceId: string
+      deviceName: string
+      model: string
+      serialNumber: string
+      selectedFaultIds: string[]
+      selectedFaultNames: string[]
+    }>
     cosmeticState: 'normal' | 'damaged_in_shipping'
     cosmeticDetail?: string
     damageImageData?: string[]

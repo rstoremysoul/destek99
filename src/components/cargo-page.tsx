@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CargoTracking } from '@/types'
 import { Plus, Search, Eye, Truck, Package, ArrowUp, ArrowDown, MapPin, ArrowRightLeft, Pencil, Lock, PauseCircle, CheckCircle2, Wrench, FolderOpen, XCircle, Clock3, MoreVertical } from 'lucide-react'
 import { CargoFormDialog } from '@/components/cargo-form-dialog'
@@ -78,6 +78,7 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
   }
 
   const isLockedView = Boolean(lockedView)
+  const isIncomingGridView = lockedView === 'incoming' || (!lockedView && cargoViewTab === 'incoming')
   const viewTitle = lockedView === 'incoming'
     ? 'Kargo Takibi - Gelen'
     : lockedView === 'outgoing'
@@ -309,39 +310,6 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
       toast.error('Kargo kaydi guncellenirken hata olustu')
       console.error('Error updating cargo:', error)
       return false
-    }
-  }
-
-  const handleUpdateRecordStatus = async (cargoId: string, newStatus: 'open' | 'on_hold' | 'closed' | 'device_repair') => {
-    if (newStatus === 'device_repair') {
-      const cargo = cargos.find((item) => item.id === cargoId)
-      if (!cargo) return
-      setRepairTicketCargo(cargo)
-      setRepairTicketOpen(true)
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/cargo/${cargoId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recordStatus: newStatus,
-        }),
-      })
-
-      if (response.ok) {
-        fetchCargos()
-      } else {
-        const error = await response.json().catch(() => null)
-        toast.error(error?.error || 'Kayıt durumu güncellenemedi')
-        console.error('Failed to update cargo record status', error)
-      }
-    } catch (error) {
-      toast.error('Kayıt durumu güncellenirken hata oluştu')
-      console.error('Error updating cargo record status:', error)
     }
   }
 
@@ -797,47 +765,53 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
             <Button
               variant="outline"
               size="sm"
-              className="h-9 gap-2 bg-slate-50"
+              className="h-9 gap-2 bg-slate-50 dark:bg-slate-900/70 dark:hover:bg-slate-800/80"
               onClick={() => openCreateCargoDialog(isLockedView ? (lockedView === 'incoming' ? 'INCOMING' : 'OUTGOING') : 'INCOMING')}
             >
               <Plus className="h-4 w-4" />
               {isLockedView ? (lockedView === 'incoming' ? 'Yeni Gelen Kargo' : 'Yeni Giden Kargo') : 'Yeni Gelen Kargo'}
             </Button>
             {!isLockedView ? (
-              <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => openCreateCargoDialog('OUTGOING')}>
+              <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50 dark:bg-slate-900/70 dark:hover:bg-slate-800/80" onClick={() => openCreateCargoDialog('OUTGOING')}>
                 <Plus className="h-4 w-4" />
                 Yeni Giden Kargo
               </Button>
             ) : null}
-            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => { setRecordStatusFilter('open'); setTypeFilter(cargoViewTab) }}>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50 dark:bg-slate-900/70 dark:hover:bg-slate-800/80" onClick={() => { setRecordStatusFilter('open'); setTypeFilter(cargoViewTab) }}>
               <FolderOpen className="h-4 w-4" />
               Acik Kayitlar
             </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setRecordStatusFilter('device_repair')}>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50 dark:bg-slate-900/70 dark:hover:bg-slate-800/80" onClick={() => setRecordStatusFilter('device_repair')}>
               <Wrench className="h-4 w-4" />
               Tamirde
               <Badge variant="secondary">{stats.repair}</Badge>
             </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50" onClick={() => setRecordStatusFilter('ready_to_ship')}>
+            <Button variant="outline" size="sm" className="h-9 gap-2 bg-slate-50 dark:bg-slate-900/70 dark:hover:bg-slate-800/80" onClick={() => setRecordStatusFilter('ready_to_ship')}>
               <CheckCircle2 className="h-4 w-4" />
               Gonderime Hazir
               <Badge variant="secondary">{stats.readyToShip}</Badge>
             </Button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="themed-scrollbar overflow-x-auto pb-2">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Takip No</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Tip</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
+                  {!isIncomingGridView ? (
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
+                  ) : null}
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kayıt</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Gönderen</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Alıcı</th>
+                  {!isIncomingGridView ? (
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Alıcı</th>
+                  ) : null}
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kargo Şirketi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Hedef</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Olusturma Tarihi</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Gönderim Tarihi</th>
+                  {!isIncomingGridView ? (
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Gönderim Tarihi</th>
+                  ) : null}
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Depo</th>
                   <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Cihaz Sayısı</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">İşlemler</th>
@@ -849,11 +823,9 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
                     key={cargo.id}
                     className={`border-b transition-colors hover:bg-muted/50 ${
                       cargo.recordStatus === 'closed'
-                        ? 'bg-muted/40 text-muted-foreground border-l-4 border-l-muted-foreground/40'
-                        : cargo.recordStatus === 'on_hold'
-                          ? 'bg-amber-50/60 border-l-4 border-l-amber-500/60'
-                          : cargo.recordStatus === 'ready_to_ship'
-                            ? 'bg-emerald-50/60 border-l-4 border-l-emerald-500/60'
+                        ? 'bg-muted/40 text-muted-foreground border-l-4 border-l-muted-foreground/40 dark:bg-slate-900/75 dark:text-slate-400'
+                      : cargo.recordStatus === 'on_hold'
+                          ? 'bg-amber-50/60 border-l-4 border-l-amber-500/60 dark:bg-amber-500/10 dark:border-l-amber-400/70'
                           : ''
                     }`}
                   >
@@ -898,13 +870,18 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
                         )}
                       </Badge>
                     </td>
+                    {!isIncomingGridView ? (
+                      <td className="p-4 align-middle">
+                        <Badge variant={getStatusColor(cargo.status)}>
+                          {getStatusText(cargo.status)}
+                        </Badge>
+                      </td>
+                    ) : null}
                     <td className="p-4 align-middle">
-                      <Badge variant={getStatusColor(cargo.status)}>
-                        {getStatusText(cargo.status)}
-                      </Badge>
-                    </td>
-                    <td className="p-4 align-middle">
-                      <Badge variant={cargo.recordStatus === 'closed' ? 'secondary' : cargo.recordStatus === 'on_hold' ? 'outline' : cargo.recordStatus === 'device_repair' ? 'destructive' : cargo.recordStatus === 'ready_to_ship' ? 'default' : 'default'} className="gap-1">
+                      <Badge
+                        variant={cargo.recordStatus === 'closed' ? 'secondary' : cargo.recordStatus === 'on_hold' ? 'outline' : cargo.recordStatus === 'device_repair' ? 'destructive' : cargo.recordStatus === 'ready_to_ship' ? 'default' : 'default'}
+                        className="gap-1"
+                      >
                         {cargo.recordStatus === 'closed' ? <Lock className="h-3 w-3" /> : cargo.recordStatus === 'on_hold' ? <PauseCircle className="h-3 w-3" /> : null}
                         {getRecordStatusText(cargo.recordStatus)}
                       </Badge>
@@ -912,9 +889,11 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
                     <td className="p-4 align-middle">
                       {truncateText(cargo.sender, 20)}
                     </td>
-                    <td className="p-4 align-middle">
-                      {cargo.type === 'incoming' ? '-' : truncateText(cargo.receiver, 20)}
-                    </td>
+                    {!isIncomingGridView ? (
+                      <td className="p-4 align-middle">
+                        {cargo.type === 'incoming' ? '-' : truncateText(cargo.receiver, 20)}
+                      </td>
+                    ) : null}
                     <td className="p-4 align-middle">
                       {cargo.cargoCompany}
                     </td>
@@ -927,9 +906,11 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
                     <td className="p-4 align-middle">
                       {formatDate(cargo.createdAt)}
                     </td>
-                    <td className="p-4 align-middle">
-                      {cargo.sentDate ? formatDate(cargo.sentDate) : '-'}
-                    </td>
+                    {!isIncomingGridView ? (
+                      <td className="p-4 align-middle">
+                        {cargo.sentDate ? formatDate(cargo.sentDate) : '-'}
+                      </td>
+                    ) : null}
                     <td className="p-4 align-middle">
                       {cargo.type === 'incoming' ? (
                         <Badge variant="secondary">
@@ -1006,12 +987,6 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
                               Tedarikci Kaydina Git
                             </DropdownMenuItem>
                           ) : null}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Kayit Durumu</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'open')}>Acik</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'on_hold')}>Beklemede</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'device_repair')}>Cihaz Tamiri</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleUpdateRecordStatus(cargo.id, 'closed')}>Kapali</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>

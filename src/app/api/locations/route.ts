@@ -1,9 +1,12 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
+import { ensureSystemWarehouses } from '@/lib/system-warehouses'
 
 // GET all locations
 export async function GET(request: NextRequest) {
   try {
+    await ensureSystemWarehouses(prisma)
+
     const locations = await prisma.location.findMany({
       where: {
         active: true,
@@ -26,6 +29,8 @@ export async function GET(request: NextRequest) {
 // POST create new location
 export async function POST(request: NextRequest) {
   try {
+    await ensureSystemWarehouses(prisma)
+
     const body = await request.json()
     const {
       name,
@@ -37,9 +42,21 @@ export async function POST(request: NextRequest) {
       type,
     } = body
 
+    const normalizedName = String(name || '').trim()
+    if (!normalizedName) {
+      return NextResponse.json({ error: 'Location name is required' }, { status: 400 })
+    }
+
+    const existingByName = await prisma.location.findFirst({
+      where: { name: normalizedName },
+    })
+    if (existingByName) {
+      return NextResponse.json(existingByName)
+    }
+
     const location = await prisma.location.create({
       data: {
-        name,
+        name: normalizedName,
         address,
         city,
         district,
@@ -59,4 +76,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

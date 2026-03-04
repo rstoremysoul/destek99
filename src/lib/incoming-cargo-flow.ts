@@ -8,6 +8,14 @@ export interface IncomingCargoFlowMeta {
   branchName: string
   selectedFaultIds: string[]
   selectedFaultNames: string[]
+  deviceFaults?: Array<{
+    deviceId: string
+    deviceName: string
+    model: string
+    serialNumber: string
+    selectedFaultIds: string[]
+    selectedFaultNames: string[]
+  }>
   cosmeticState: 'normal' | 'damaged_in_shipping'
   cosmeticDetail?: string
   damageImageData?: string[]
@@ -40,6 +48,16 @@ export function parseIncomingCargoFlowMeta(notes?: string | null): {
         branchName: String(data?.branchName || ''),
         selectedFaultIds: Array.isArray(data?.selectedFaultIds) ? data.selectedFaultIds.map((x: unknown) => String(x)) : [],
         selectedFaultNames: Array.isArray(data?.selectedFaultNames) ? data.selectedFaultNames.map((x: unknown) => String(x)) : [],
+        deviceFaults: Array.isArray(data?.deviceFaults)
+          ? data.deviceFaults.map((item: any) => ({
+              deviceId: String(item?.deviceId || ''),
+              deviceName: String(item?.deviceName || ''),
+              model: String(item?.model || ''),
+              serialNumber: String(item?.serialNumber || ''),
+              selectedFaultIds: Array.isArray(item?.selectedFaultIds) ? item.selectedFaultIds.map((x: unknown) => String(x)) : [],
+              selectedFaultNames: Array.isArray(item?.selectedFaultNames) ? item.selectedFaultNames.map((x: unknown) => String(x)) : [],
+            }))
+          : [],
         cosmeticState: data?.cosmeticState === 'damaged_in_shipping' ? 'damaged_in_shipping' : 'normal',
         cosmeticDetail: String(data?.cosmeticDetail || ''),
         damageImageData: Array.isArray(data?.damageImageData) ? data.damageImageData.map((x: unknown) => String(x)) : [],
