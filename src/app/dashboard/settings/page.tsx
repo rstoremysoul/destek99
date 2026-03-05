@@ -5,6 +5,8 @@ import { DeviceModelsSettingsCard } from '@/components/settings/device-models-se
 import { TechniciansSettingsCard } from '@/components/settings/technicians-settings-card'
 import { IncomingCargoSettingsCard } from '@/components/settings/incoming-cargo-settings-card'
 import { CargoCompaniesSettingsCard } from '@/components/settings/cargo-companies-settings-card'
+import { IncomingCargoCarrierPersonnelSettingsCard } from '@/components/settings/incoming-cargo-carrier-personnel-settings-card'
+import { SupplierCompaniesSettingsCard } from '@/components/settings/supplier-companies-settings-card'
 
 export default function SettingsPage() {
   return (
@@ -16,7 +18,9 @@ export default function SettingsPage() {
         </p>
       </div>
       <TechniciansSettingsCard />
+      <IncomingCargoCarrierPersonnelSettingsCard />
       <CargoCompaniesSettingsCard />
+      <SupplierCompaniesSettingsCard />
       <DeviceTypesSettingsCard />
       <DeviceModelsSettingsCard />
       <IncomingCargoSettingsCard />

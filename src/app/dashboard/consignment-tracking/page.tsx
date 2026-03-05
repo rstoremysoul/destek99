@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Vendor, VendorProduct } from '@/types'
-import { Plus, Search, Eye, Package, Clock, CheckCircle, Building2, Calendar } from 'lucide-react'
+import { Plus, Search, Eye, Package, Clock, CheckCircle, Building2, RotateCcw } from 'lucide-react'
 import { VendorFormDialog } from '@/components/vendor-form-dialog'
 import { VendorProductFormDialog } from '@/components/vendor-product-form-dialog'
 import { parseVendorWorkflowMeta } from '@/lib/vendor-workflow'
@@ -27,6 +29,9 @@ export default function VendorTrackingPage() {
   const [dateRangeStart, setDateRangeStart] = useState('')
   const [dateRangeEnd, setDateRangeEnd] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [returnDialogProduct, setReturnDialogProduct] = useState<VendorProduct | null>(null)
+  const [returnExplanation, setReturnExplanation] = useState('')
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false)
   const router = useRouter()
 
   const recordsPerPage = 20
@@ -48,7 +53,7 @@ export default function VendorTrackingPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/vendor-tracking?consignment=false')
+      const response = await fetch('/api/vendor-tracking?consignment=true')
       const data = await response.json()
       // Map API data to VendorProduct format
       const mappedProducts = data.map((item: any) => ({
@@ -159,7 +164,7 @@ export default function VendorTrackingPage() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'at_vendor': return 'Tedarikçide'
+      case 'at_vendor': return 'Konsinye Depoda'
       case 'in_testing': return 'Test Ediliyor'
       case 'in_transit': return 'Kargoda'
       case 'completed': return 'Tamamlandı'
@@ -212,13 +217,51 @@ export default function VendorTrackingPage() {
       const response = await fetch('/api/vendor-tracking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productData),
+        body: JSON.stringify({ ...productData, isConsignment: true }),
       })
       if (response.ok) {
         fetchProducts()
       }
     } catch (error) {
       console.error('Error adding product:', error)
+    }
+  }
+
+  const openReturnDialog = (product: VendorProduct) => {
+    setReturnDialogProduct(product)
+    setReturnExplanation('')
+  }
+
+  const handleReturnProduct = async () => {
+    if (!returnDialogProduct) return
+    const explanation = returnExplanation.trim()
+    if (!explanation) {
+      alert('İade açıklaması zorunludur.')
+      return
+    }
+
+    setIsSubmittingReturn(true)
+    try {
+      const response = await fetch(`/api/vendor-tracking/${returnDialogProduct.id}/return`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ explanation }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        alert(data?.error || 'İade işlemi başarısız oldu.')
+        return
+      }
+
+      setReturnDialogProduct(null)
+      setReturnExplanation('')
+      await fetchProducts()
+    } catch (error) {
+      console.error('Error returning consignment ticket:', error)
+      alert('İade işlemi sırasında hata oluştu.')
+    } finally {
+      setIsSubmittingReturn(false)
     }
   }
 
@@ -239,9 +282,9 @@ export default function VendorTrackingPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Tedarikçi Takibi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Konsinye Takibi</h1>
         <p className="text-muted-foreground">
-          Tedarikçilerdeki ürünleri yönetin ve takip edin.
+          Konsinye urunleri yonetin ve takip edin.
         </p>
       </div>
 
@@ -292,7 +335,7 @@ export default function VendorTrackingPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tüm Durumlar</SelectItem>
-              <SelectItem value="at_vendor">Tedarikçide</SelectItem>
+              <SelectItem value="at_vendor">Konsinye Depoda</SelectItem>
               <SelectItem value="in_testing">Test Ediliyor</SelectItem>
               <SelectItem value="in_transit">Kargoda</SelectItem>
               <SelectItem value="completed">Tamamlandı</SelectItem>
@@ -421,14 +464,14 @@ export default function VendorTrackingPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalProducts}</div>
               <p className="text-xs text-muted-foreground">
-                Tedarikçilerde olan
+                Konsinye depoda olan
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tedarikçide</CardTitle>
+              <CardTitle className="text-sm font-medium">Konsinye Depoda</CardTitle>
               <Building2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -488,8 +531,7 @@ export default function VendorTrackingPage() {
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Tedarikçi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Giriş Tarihi</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Tahmini Dönüş</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Maliyet</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">İade Tarihi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">İşlemler</th>
                 </tr>
               </thead>
@@ -522,13 +564,8 @@ export default function VendorTrackingPage() {
                       {formatDate(product.entryDate)}
                     </td>
                     <td className="p-4 align-middle">
-                      {product.estimatedCompletionDate
-                        ? formatDate(product.estimatedCompletionDate)
-                        : '-'}
-                    </td>
-                    <td className="p-4 align-middle">
-                      {product.cost
-                        ? `â‚º${product.cost.toLocaleString('tr-TR')}`
+                      {product.exitDate
+                        ? formatDate(product.exitDate)
                         : '-'}
                     </td>
                     <td className="p-4 align-middle">
@@ -536,10 +573,19 @@ export default function VendorTrackingPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => router.push(`/dashboard/vendor-tracking/${product.id}`)}
+                          onClick={() => router.push(`/dashboard/consignment-tracking/${product.id}`)}
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Görüntüle
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => openReturnDialog(product)}
+                          disabled={product.currentStatus === 'returned' || product.currentStatus === 'completed'}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          İade Et
                         </Button>
                       </div>
                     </td>
@@ -602,7 +648,66 @@ export default function VendorTrackingPage() {
         onSubmit={handleAddProduct}
         vendors={vendors}
       />
+
+      <Dialog
+        open={Boolean(returnDialogProduct)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReturnDialogProduct(null)
+            setReturnExplanation('')
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Konsinye Ürün İade</DialogTitle>
+            <DialogDescription>
+              İade edilecek ürün bilgilerini kontrol edin ve açıklama girin.
+            </DialogDescription>
+          </DialogHeader>
+
+          {returnDialogProduct && (
+            <div className="space-y-4">
+              <div className="rounded-md border p-3 text-sm space-y-1">
+                <p><span className="font-medium">Ürün:</span> {returnDialogProduct.productName}</p>
+                <p><span className="font-medium">Model:</span> {returnDialogProduct.model || '-'}</p>
+                <p><span className="font-medium">Seri No:</span> {returnDialogProduct.serialNumber || '-'}</p>
+                <p><span className="font-medium">Tedarikçi:</span> {returnDialogProduct.vendorName || '-'}</p>
+                <p><span className="font-medium">Durum:</span> {getStatusText(returnDialogProduct.currentStatus)}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="returnExplanation">Açıklama</Label>
+                <Textarea
+                  id="returnExplanation"
+                  value={returnExplanation}
+                  onChange={(e) => setReturnExplanation(e.target.value)}
+                  rows={4}
+                  placeholder="İade nedeni ve notunuzu yazın..."
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReturnDialogProduct(null)
+                setReturnExplanation('')
+              }}
+              disabled={isSubmittingReturn}
+            >
+              Vazgeç
+            </Button>
+            <Button onClick={handleReturnProduct} disabled={isSubmittingReturn}>
+              {isSubmittingReturn ? 'İade Ediliyor...' : 'İade Et'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+
 

@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
+function isUnknownConsignmentArg(error: unknown) {
+  if (!(error instanceof Error)) return false
+  const message = error.message || ''
+  return (
+    message.includes('Unknown argument `isConsignment`') ||
+    message.includes('Unknown field `isConsignment`')
+  )
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const id = params.id
     const body = await request.json()
-    const data: { name?: string; active?: boolean } = {}
+    const data: { name?: string; active?: boolean; isConsignment?: boolean } = {}
 
     if (typeof body?.name === 'string') {
       const name = body.name.trim()
@@ -19,14 +28,34 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       data.active = body.active
     }
 
-    if (!('name' in data) && !('active' in data)) {
+    if (typeof body?.isConsignment === 'boolean') {
+      data.isConsignment = body.isConsignment
+    }
+
+    if (!('name' in data) && !('active' in data) && !('isConsignment' in data)) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
-    const updated = await db.deviceModel.update({
-      where: { id },
-      data,
-    })
+    let updated: any
+    try {
+      updated = await db.deviceModel.update({
+        where: { id },
+        data,
+      })
+    } catch (error) {
+      if (!isUnknownConsignmentArg(error) || typeof data.isConsignment !== 'boolean') throw error
+      const { isConsignment, ...rest } = data
+      updated = await db.deviceModel.update({
+        where: { id },
+        data: rest,
+      })
+      await db.$executeRawUnsafe(
+        'UPDATE device_models SET is_consignment = ? WHERE id = ?',
+        isConsignment ? 1 : 0,
+        id
+      )
+      updated = { ...updated, isConsignment }
+    }
 
     return NextResponse.json(updated)
   } catch (error) {

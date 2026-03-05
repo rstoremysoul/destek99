@@ -15,14 +15,17 @@ type IncomingChannel = 'cargo' | 'on_site_service' | 'supplier' | 'installation_
 type CosmeticState = 'normal' | 'damaged_in_shipping'
 
 type Company = { id: string; name: string; active: boolean; branches?: Array<{ id: string; name: string; active: boolean }> }
+type SupplierCompany = { id: string; name: string; active: boolean }
 type Branch = { id: string; name: string; active: boolean; companyId: string }
 type Fault = { id: string; name: string; active: boolean }
+type CarrierPersonnel = { id: string; name: string; active?: boolean }
 
 type DeviceLine = {
   id: string
   deviceName: string
   model: string
   serialNumber: string
+  isConsignment: boolean
   selectedFaultIds: string[]
 }
 
@@ -35,11 +38,12 @@ interface IncomingCargoWizardDialogProps {
 const STEP_TITLES = [
   'Urun Gelme Kanali',
   'Tasima Bilgisi',
-  'Firma ve Sube',
+  'Firma Bilgisi',
   'Cihaz Bilgileri',
   'Ariza ve Kozmetik',
   'Onizleme',
 ]
+const HIDDEN_STEP_INDICATOR_INDEXES = new Set([1])
 
 const CHANNEL_LABELS: Record<IncomingChannel, string> = {
   cargo: 'Kargo',
@@ -54,6 +58,7 @@ const createEmptyDevice = (): DeviceLine => ({
   deviceName: '',
   model: '',
   serialNumber: '',
+  isConsignment: false,
   selectedFaultIds: [],
 })
 
@@ -75,28 +80,34 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
   const [cargoCompanies, setCargoCompanies] = useState<string[]>([])
 
   const [companies, setCompanies] = useState<Company[]>([])
+  const [supplierCompanies, setSupplierCompanies] = useState<SupplierCompany[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
   const [companyId, setCompanyId] = useState('')
   const [branchId, setBranchId] = useState('')
 
   const [deviceTypes, setDeviceTypes] = useState<string[]>([])
-  const [deviceModels, setDeviceModels] = useState<Array<{ id: string; name: string; active: boolean; brand: { name: string } }>>([])
+  const [deviceModels, setDeviceModels] = useState<Array<{ id: string; name: string; active: boolean; isConsignment?: boolean; brand: { name: string } }>>([])
   const [devices, setDevices] = useState<DeviceLine[]>([createEmptyDevice()])
 
   const [faultOptions, setFaultOptions] = useState<Fault[]>([])
+  const [carrierPersonnelList, setCarrierPersonnelList] = useState<CarrierPersonnel[]>([])
+  const [carrierPersonnelId, setCarrierPersonnelId] = useState('')
+  const [carrierPersonnelName, setCarrierPersonnelName] = useState('')
   const [cosmeticState, setCosmeticState] = useState<CosmeticState>('normal')
   const [cosmeticDetail, setCosmeticDetail] = useState('')
   const [damageImageData, setDamageImageData] = useState<string[]>([])
   const [notes, setNotes] = useState('')
 
   const requiresTransport = channel !== 'on_site_service' && channel !== 'installation_team' && channel !== 'supplier'
-  const activeCompanies = companies.filter((c) => c.active)
+  const activeIncomingCompanies = companies.filter((c) => c.active)
+  const activeSupplierCompanies = supplierCompanies.filter((c) => c.active)
+  const activeCompanies = channel === 'supplier' ? activeSupplierCompanies : activeIncomingCompanies
   const activeBranches = branches.filter((b) => b.active && b.companyId === companyId)
   const activeFaults = faultOptions.filter((f) => f.active)
 
   const selectedCompanyName = useMemo(
-    () => companies.find((c) => c.id === companyId)?.name || '',
-    [companies, companyId]
+    () => (channel === 'supplier' ? supplierCompanies : companies).find((c) => c.id === companyId)?.name || '',
+    [channel, supplierCompanies, companies, companyId]
   )
   const selectedBranchName = useMemo(
     () => branches.find((b) => b.id === branchId)?.name || '',
@@ -109,37 +120,46 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
       const [
         companyRes,
         branchRes,
+        supplierCompanyRes,
         faultRes,
         deviceTypeRes,
         modelRes,
         cargoCompanyRes,
+        carrierPersonnelRes,
       ] = await Promise.all([
         fetch('/api/incoming-cargo-companies'),
         fetch('/api/incoming-cargo-branches'),
+        fetch('/api/supplier-companies'),
         fetch('/api/incoming-cargo-faults'),
         fetch('/api/brands'),
         fetch('/api/models/all'),
         fetch('/api/cargo-companies'),
+        fetch('/api/incoming-cargo-carrier-personnel'),
       ])
 
       const [
         companyData,
         branchData,
+        supplierCompanyData,
         faultData,
         deviceTypeData,
         modelData,
         cargoCompanyData,
+        carrierPersonnelData,
       ] = await Promise.all([
         companyRes.json(),
         branchRes.json(),
+        supplierCompanyRes.json(),
         faultRes.json(),
         deviceTypeRes.json(),
         modelRes.json(),
         cargoCompanyRes.json(),
+        carrierPersonnelRes.json(),
       ])
 
       setCompanies(Array.isArray(companyData) ? companyData : [])
       setBranches(Array.isArray(branchData) ? branchData : [])
+      setSupplierCompanies(Array.isArray(supplierCompanyData) ? supplierCompanyData : [])
       setFaultOptions(Array.isArray(faultData) ? faultData : [])
       setDeviceTypes(Array.isArray(deviceTypeData) ? deviceTypeData : [])
       setDeviceModels(Array.isArray(modelData) ? modelData : [])
@@ -151,36 +171,53 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
               .filter(Boolean)
           : []
       )
+      setCarrierPersonnelList(
+        Array.isArray(carrierPersonnelData)
+          ? carrierPersonnelData.filter((t: CarrierPersonnel) => t?.active !== false)
+          : []
+      )
     }
     load().catch((e) => console.error('incoming wizard load error', e))
   }, [open])
 
   useEffect(() => {
     if (!open) return
-    if (!companyId && activeCompanies.length > 0) {
-      setCompanyId(activeCompanies[0].id)
+    const selectedStillExists = activeCompanies.some((c) => c.id === companyId)
+    if (!selectedStillExists) {
+      setCompanyId(activeCompanies[0]?.id || '')
     }
   }, [open, companyId, activeCompanies])
 
   useEffect(() => {
     if (!open) return
+    if (channel === 'supplier') {
+      if (branchId) setBranchId('')
+      return
+    }
     if (!branchId && activeBranches.length > 0) {
       setBranchId(activeBranches[0].id)
     }
-  }, [open, branchId, activeBranches])
+  }, [open, channel, branchId, activeBranches])
 
   useEffect(() => {
     if (!open) return
     if (!requiresTransport) {
-      setCargoCompany('Yerinde/Kurulum')
+      setCargoCompany(channel === 'on_site_service' ? '-' : (channel === 'supplier' ? 'Tedarikci' : 'Yerinde/Kurulum'))
       if (!trackingNumber) setTrackingNumber(buildAutoTrackingNumber())
     }
-  }, [open, requiresTransport, trackingNumber])
+  }, [open, requiresTransport, trackingNumber, channel])
 
   const modelsForDevice = (deviceName: string) => {
     return deviceModels
       .filter((m) => m.active && m.brand?.name === deviceName)
       .map((m) => m.name)
+  }
+
+  const getModelConsignmentDefault = (deviceName: string, model: string) => {
+    const found = deviceModels.find(
+      (m) => m.active && m.brand?.name === deviceName && m.name === model
+    )
+    return Boolean(found?.isConsignment)
   }
 
   const updateDevice = (index: number, patch: Partial<DeviceLine>) => {
@@ -224,7 +261,10 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
     }
     if (step === 2) {
       if (!companyId) return 'Firma secimi zorunlu'
-      if (!branchId) return 'Sube secimi zorunlu'
+      if (channel !== 'supplier' && !branchId) return 'Sube secimi zorunlu'
+      if (channel === 'on_site_service' && !carrierPersonnelId) {
+        return 'Yerinde servis icin cihazi getiren personel secimi zorunlu'
+      }
     }
     if (step === 3) {
       for (let i = 0; i < devices.length; i++) {
@@ -268,6 +308,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
         deviceName: device.deviceName,
         model: device.model,
         serialNumber: device.serialNumber.trim(),
+        isConsignment: Boolean(device.isConsignment),
         selectedFaultIds: device.selectedFaultIds,
         selectedFaultNames,
       }
@@ -284,12 +325,14 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
       channel,
       companyId,
       companyName: selectedCompanyName,
-      branchId,
-      branchName: selectedBranchName,
+      branchId: channel === 'supplier' ? '' : branchId,
+      branchName: channel === 'supplier' ? '' : selectedBranchName,
       selectedFaultIds,
       selectedFaultNames,
       deviceFaults,
       cosmeticState,
+      carrierPersonnelId,
+      carrierPersonnelName,
       cosmeticDetail: cosmeticDetail || '',
       damageImageData,
     }
@@ -299,9 +342,11 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
       type: 'incoming',
       status: 'in_transit',
       recordStatus: 'open',
-      sender: `${selectedCompanyName}${selectedBranchName ? ' / ' + selectedBranchName : ''}`,
+      sender: channel === 'supplier'
+        ? selectedCompanyName
+        : `${selectedCompanyName}${selectedBranchName ? ' / ' + selectedBranchName : ''}`,
       receiver: '',
-      cargoCompany: requiresTransport ? cargoCompany : 'Yerinde/Kurulum',
+      cargoCompany: requiresTransport ? cargoCompany : (channel === 'on_site_service' ? '-' : (channel === 'supplier' ? 'Tedarikci' : 'Yerinde/Kurulum')),
       destination: 'headquarters',
       destinationAddress: 'Merkez Ofis Deposu',
       notes: [
@@ -331,6 +376,8 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
       setCargoCompany('')
       setDevices([createEmptyDevice()])
       setCosmeticState('normal')
+      setCarrierPersonnelId('')
+      setCarrierPersonnelName('')
       setCosmeticDetail('')
       setDamageImageData([])
       setNotes('')
@@ -352,7 +399,8 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
 
         <div className="relative z-10 space-y-3">
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-            {STEP_TITLES.map((title, idx) => {
+            {STEP_TITLES.filter((_, idx) => !HIDDEN_STEP_INDICATOR_INDEXES.has(idx)).map((title, visibleIdx) => {
+              const idx = STEP_TITLES.indexOf(title)
               const done = idx < step
               const active = idx === step
               return (
@@ -366,7 +414,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                         : 'border-slate-700 bg-slate-900/75 text-slate-400'
                   }`}
                 >
-                  <div className="font-semibold">Adim {idx + 1}</div>
+                  <div className="font-semibold">Adim {visibleIdx + 1}</div>
                   <div className="truncate">{title}</div>
                 </div>
               )
@@ -455,7 +503,7 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
           {step === 2 && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Firma Adi</Label>
+                <Label>{channel === 'supplier' ? 'Tedarikci Firma' : 'Firma Adi'}</Label>
                 <Select value={companyId} onValueChange={(v) => { setCompanyId(v); setBranchId('') }}>
                   <SelectTrigger><SelectValue placeholder="Firma secin" /></SelectTrigger>
                   <SelectContent>
@@ -465,17 +513,67 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Sube Adi</Label>
-                <Select value={branchId} onValueChange={setBranchId}>
-                  <SelectTrigger><SelectValue placeholder="Sube secin" /></SelectTrigger>
-                  <SelectContent>
-                    {activeBranches.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {channel !== 'supplier' ? (
+                <div className="space-y-2">
+                  <Label>Sube Adi</Label>
+                  <Select value={branchId} onValueChange={setBranchId}>
+                    <SelectTrigger><SelectValue placeholder="Sube secin" /></SelectTrigger>
+                    <SelectContent>
+                      {activeBranches.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Bilgi</Label>
+                  <div className="rounded-md border border-slate-700 bg-slate-900/70 p-3 text-sm text-slate-300">
+                    Tedarikci kanalinda sadece firma secilir. Sube secimi kullanilmaz.
+                  </div>
+                </div>
+              )}
+              {channel === 'on_site_service' ? (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Cihazi Getiren Personel</Label>
+                  {carrierPersonnelList.length > 0 ? (
+                    <Select
+                      value={carrierPersonnelId || 'none'}
+                      onValueChange={(value) => {
+                        if (value === 'none') {
+                          setCarrierPersonnelId('')
+                          setCarrierPersonnelName('')
+                          return
+                        }
+                        setCarrierPersonnelId(value)
+                        const selected = carrierPersonnelList.find((t) => t.id === value)
+                        setCarrierPersonnelName(selected?.name || '')
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Personel secin" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Secilmedi</SelectItem>
+                        {carrierPersonnelList.map((tech) => (
+                          <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="rounded-md border border-amber-400/35 bg-amber-500/12 p-2 text-xs text-amber-100">
+                        Personel bulunamadi. Ayarlar {'>'} Cihazi Getiren Personel Ayari alanindan personel ekleyin.
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => window.open('/dashboard/settings', '_blank')}
+                      >
+                        Ayarlari Ac
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -483,10 +581,10 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
             <div className="space-y-3">
               {devices.map((device, index) => (
                 <div key={device.id} className="space-y-3 rounded-md border border-slate-700 bg-slate-900/70 p-3">
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-4">
                   <div className="space-y-2">
                     <Label>Cihaz Adi</Label>
-                    <Select value={device.deviceName} onValueChange={(v) => updateDevice(index, { deviceName: v, model: '' })}>
+                    <Select value={device.deviceName} onValueChange={(v) => updateDevice(index, { deviceName: v, model: '', isConsignment: false })}>
                       <SelectTrigger><SelectValue placeholder="Cihaz secin" /></SelectTrigger>
                       <SelectContent>
                         {deviceTypes.map((t) => (
@@ -497,7 +595,15 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                   </div>
                   <div className="space-y-2">
                     <Label>Model</Label>
-                    <Select value={device.model} onValueChange={(v) => updateDevice(index, { model: v })}>
+                    <Select
+                      value={device.model}
+                      onValueChange={(v) =>
+                        updateDevice(index, {
+                          model: v,
+                          isConsignment: getModelConsignmentDefault(device.deviceName, v),
+                        })
+                      }
+                    >
                       <SelectTrigger><SelectValue placeholder="Model secin" /></SelectTrigger>
                       <SelectContent>
                         {modelsForDevice(device.deviceName).map((m) => (
@@ -509,6 +615,19 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
                   <div className="space-y-2">
                     <Label>Seri No</Label>
                     <Input value={device.serialNumber} onChange={(e) => updateDevice(index, { serialNumber: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Konsinye Durumu</Label>
+                    <Select
+                      value={device.isConsignment ? 'consignment' : 'normal'}
+                      onValueChange={(value) => updateDevice(index, { isConsignment: value === 'consignment' })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="consignment">Konsinye</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   </div>
                   <div className="space-y-2 rounded-md border border-slate-700 bg-slate-900/80 p-2">
@@ -580,8 +699,12 @@ export function IncomingCargoWizardDialog({ open, onOpenChange, onSubmit }: Inco
             <div className="space-y-2 rounded-md border border-slate-700 bg-slate-900/70 p-3 text-sm text-slate-200">
               <div><strong>Kanal:</strong> {CHANNEL_LABELS[channel]}</div>
               <div><strong>Takip No:</strong> {requiresTransport ? trackingNumber || '-' : '(otomatik)'}</div>
-              <div><strong>Kargo Firmasi:</strong> {requiresTransport ? cargoCompany || '-' : 'Yerinde/Kurulum'}</div>
-              <div><strong>Firma/Sube:</strong> {selectedCompanyName} / {selectedBranchName}</div>
+              <div><strong>Kargo Firmasi:</strong> {requiresTransport ? cargoCompany || '-' : (channel === 'on_site_service' ? '-' : (channel === 'supplier' ? 'Tedarikci' : 'Yerinde/Kurulum'))}</div>
+              <div><strong>Firma:</strong> {selectedCompanyName || '-'}</div>
+              <div><strong>Sube:</strong> {selectedBranchName || '-'}</div>
+              {channel === 'on_site_service' ? (
+                <div><strong>Cihazi Getiren Personel:</strong> {carrierPersonnelName || '-'}</div>
+              ) : null}
               <div><strong>Cihaz Sayisi:</strong> {devices.length}</div>
               <div><strong>Ariza Secimi:</strong> {devices.reduce((sum, d) => sum + d.selectedFaultIds.length, 0)}</div>
               <div><strong>Kozmetik:</strong> {cosmeticState === 'damaged_in_shipping' ? 'Hasarli' : 'Normal'}</div>

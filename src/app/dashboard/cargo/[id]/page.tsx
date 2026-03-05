@@ -4,20 +4,17 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { CargoTracking } from '@/types'
 import {
   ArrowLeft,
   Truck,
-  Package,
   ArrowUp,
-  ArrowDown,
-  MapPin,
   Calendar,
-  User,
-  Building2,
-  ClipboardList
+  Save,
+  X
 } from 'lucide-react'
 import { CargoRepairTicketDialog } from '@/components/cargo-repair-ticket-dialog'
 import { parseCargoVendorMeta } from '@/lib/cargo-vendor-workflow'
@@ -27,9 +24,44 @@ interface PageProps {
   params: { id: string }
 }
 
+type DeviceLookupHistoryItem = {
+  source: 'cargo' | 'repair' | 'installation' | 'equivalent'
+  date: string
+  title: string
+  details: string
+}
+
+type DeviceHistoryGroup = {
+  serialNumber: string
+  items: DeviceLookupHistoryItem[]
+}
+
 export default function CargoDetailPage({ params }: PageProps) {
   const [cargo, setCargo] = useState<CargoTracking | null>(null)
   const [repairHistory, setRepairHistory] = useState<Array<{ at: string; action: string; technicianName?: string; operations?: string[]; note?: string }>>([])
+  const [deviceHistoryGroups, setDeviceHistoryGroups] = useState<DeviceHistoryGroup[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [isEditingDetails, setIsEditingDetails] = useState(false)
+  const [isSavingDetails, setIsSavingDetails] = useState(false)
+  const [detailsForm, setDetailsForm] = useState<{
+    cargoCompany: string
+    notes: string
+    sentDate: string
+    devices: Array<{
+      id: string
+      deviceName: string
+      model: string
+      serialNumber: string
+      condition: string
+      purpose: string
+      quantity: number
+    }>
+  }>({
+    cargoCompany: '',
+    notes: '',
+    sentDate: '',
+    devices: [],
+  })
   const [loading, setLoading] = useState(true)
   const [repairTicketOpen, setRepairTicketOpen] = useState(false)
   const router = useRouter()
@@ -95,9 +127,65 @@ export default function CargoDetailPage({ params }: PageProps) {
     }
   }, [params.id, router])
 
+  const fetchDeviceHistoryBySerial = useCallback(async (devices: Array<{ serialNumber?: string | null }>) => {
+    const serials = Array.from(new Set((devices || []).map((d) => String(d.serialNumber || '').trim()).filter(Boolean)))
+    if (serials.length === 0) {
+      setDeviceHistoryGroups([])
+      return
+    }
+
+    try {
+      setHistoryLoading(true)
+      const responses = await Promise.all(
+        serials.map(async (serial) => {
+          const response = await fetch(`/api/devices/lookup?serial=${encodeURIComponent(serial)}`)
+          if (!response.ok) return { serial, history: [] as DeviceLookupHistoryItem[] }
+          const payload = await response.json()
+          const history = Array.isArray(payload?.history) ? payload.history : []
+          return { serial, history }
+        })
+      )
+
+      const normalized = responses.map((entry) => ({
+        serialNumber: entry.serial,
+        items: entry.history.map((item: any) => ({
+          source: item.source,
+          date: String(item.date),
+          title: String(item.title || '-'),
+          details: String(item.details || '-'),
+        })),
+      }))
+      setDeviceHistoryGroups(normalized)
+    } catch (error) {
+      console.error('Error fetching device history by serial:', error)
+      setDeviceHistoryGroups([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchCargo()
   }, [fetchCargo])
+
+  useEffect(() => {
+    if (!cargo) return
+    setDetailsForm({
+      cargoCompany: cargo.cargoCompany || '',
+      notes: cargo.notes || '',
+      sentDate: cargo.sentDate ? toDateTimeLocal(cargo.sentDate) : '',
+      devices: cargo.devices.map((device) => ({
+        id: device.id,
+        deviceName: device.deviceName || '',
+        model: device.model || '',
+        serialNumber: device.serialNumber || '',
+        condition: device.condition,
+        purpose: device.purpose,
+        quantity: device.quantity || 1,
+      })),
+    })
+    fetchDeviceHistoryBySerial(cargo.devices)
+  }, [cargo, fetchDeviceHistoryBySerial])
 
   if (loading) {
     return (
@@ -119,69 +207,6 @@ export default function CargoDetailPage({ params }: PageProps) {
     )
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'in_transit': return 'secondary'
-      case 'delivered': return 'default'
-      case 'returned': return 'secondary'
-      case 'lost': return 'destructive'
-      case 'damaged': return 'destructive'
-      default: return 'outline'
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'in_transit': return 'Yolda'
-      case 'delivered': return 'Teslim Edildi'
-      case 'returned': return 'İade Edildi'
-      case 'lost': return 'Kayıp'
-      case 'damaged': return 'Hasarlı'
-      default: return status
-    }
-  }
-
-  const getDestinationText = (destination: string) => {
-    switch (destination) {
-      case 'customer': return 'Müşteri'
-      case 'distributor': return 'Distribütör'
-      case 'branch': return 'Şube'
-      case 'headquarters': return 'Merkez'
-      default: return destination
-    }
-  }
-
-  const getRecordStatusText = (status?: string) => {
-    switch (status) {
-      case 'open': return 'Açık'
-      case 'on_hold': return 'Beklemede'
-      case 'closed': return 'Kapalı'
-      case 'device_repair': return 'Cihaz Tamiri'
-      case 'ready_to_ship': return 'Gonderime Hazir'
-      default: return 'Açık'
-    }
-  }
-
-  const getConditionText = (condition: string) => {
-    switch (condition) {
-      case 'new': return 'Yeni'
-      case 'used': return 'Kullanılmış'
-      case 'refurbished': return 'Yenilenmiş'
-      case 'damaged': return 'Hasarlı'
-      default: return condition
-    }
-  }
-
-  const getPurposeText = (purpose: string) => {
-    switch (purpose) {
-      case 'installation': return 'Kurulum'
-      case 'replacement': return 'Değişim'
-      case 'repair': return 'Tamir'
-      case 'return': return 'İade'
-      default: return purpose
-    }
-  }
-
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('tr-TR', {
       day: '2-digit',
@@ -193,8 +218,47 @@ export default function CargoDetailPage({ params }: PageProps) {
     }).format(date)
   }
 
-  const isTechnicalServiceOutgoing =
-    cargo.type === 'outgoing' && String(cargo.notes || '').includes('[AUTO_OUTGOING_FROM_REPAIR:')
+  const toDateTimeLocal = (date: Date) => {
+    const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    return d.toISOString().slice(0, 16)
+  }
+
+  const saveDetails = async () => {
+    if (!cargo) return
+    try {
+      setIsSavingDetails(true)
+      const payload = {
+        cargoCompany: detailsForm.cargoCompany,
+        notes: detailsForm.notes,
+        sentDate: detailsForm.sentDate ? new Date(detailsForm.sentDate).toISOString() : null,
+        devices: detailsForm.devices.map((device) => ({
+          deviceName: device.deviceName,
+          model: device.model,
+          serialNumber: device.serialNumber,
+          condition: device.condition,
+          purpose: device.purpose,
+          quantity: device.quantity || 1,
+        })),
+      }
+
+      const response = await fetch(`/api/cargo/${cargo.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        throw new Error('Kargo detaylari guncellenemedi')
+      }
+
+      await fetchCargo()
+      setIsEditingDetails(false)
+    } catch (error) {
+      console.error('Error saving cargo details:', error)
+    } finally {
+      setIsSavingDetails(false)
+    }
+  }
 
   const getIncomingChannelText = (channel?: string) => {
     switch (channel) {
@@ -205,6 +269,12 @@ export default function CargoDetailPage({ params }: PageProps) {
       case 'cargo': return 'Kargo'
       default: return '-'
     }
+  }
+
+  const getCargoCompanyDisplay = () => {
+    if (cargo.incomingFlow?.channel === 'on_site_service') return '-'
+    if (cargo.incomingFlow?.channel === 'supplier') return 'Tedarikci'
+    return cargo.cargoCompany || '-'
   }
 
   return (
@@ -230,23 +300,6 @@ export default function CargoDetailPage({ params }: PageProps) {
           </div>
 
           <div className="flex gap-2">
-            <Badge variant={getStatusColor(cargo.status)} className="text-sm py-1">
-              {getStatusText(cargo.status)}
-            </Badge>
-              <Badge
-              variant={cargo.recordStatus === 'closed' ? 'secondary' : cargo.recordStatus === 'on_hold' ? 'outline' : cargo.recordStatus === 'device_repair' ? 'destructive' : 'default'}
-              className="text-sm py-1"
-            >
-              {getRecordStatusText(cargo.recordStatus)}
-            </Badge>
-            <Badge variant="outline" className="text-sm py-1">
-              {cargo.type === 'incoming' ? 'Gelen' : 'Giden'}
-            </Badge>
-            {isTechnicalServiceOutgoing ? (
-              <Badge variant="outline" className="text-sm py-1">
-                Kaynak: Teknik Servis
-              </Badge>
-            ) : null}
             {cargo.vendorTracking?.vendorProductIds?.[0] ? (
               <Button
                 variant="outline"
@@ -268,13 +321,11 @@ export default function CargoDetailPage({ params }: PageProps) {
       <Tabs defaultValue="details" className="space-y-4">
         <TabsList>
           <TabsTrigger value="details">Genel Bilgiler</TabsTrigger>
-          <TabsTrigger value="devices">Cihazlar ({cargo.devices.length})</TabsTrigger>
           <TabsTrigger value="history">Geçmiş</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="space-y-4">
-          {/* Sender and Receiver Info */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -286,24 +337,51 @@ export default function CargoDetailPage({ params }: PageProps) {
                 <p className="font-medium">{cargo.sender}</p>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ArrowDown className="h-5 w-5" />
-                  Alıcı
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-medium">{cargo.type === 'incoming' ? '-' : (cargo.receiver || '-')}</p>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Cargo Details */}
           <Card>
             <CardHeader>
-              <CardTitle>Kargo Detayları</CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>Kargo Detayları</CardTitle>
+                {isEditingDetails ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingDetails(false)
+                        setDetailsForm({
+                          cargoCompany: cargo.cargoCompany || '',
+                          notes: cargo.notes || '',
+                          sentDate: cargo.sentDate ? toDateTimeLocal(cargo.sentDate) : '',
+                          devices: cargo.devices.map((device) => ({
+                            id: device.id,
+                            deviceName: device.deviceName || '',
+                            model: device.model || '',
+                            serialNumber: device.serialNumber || '',
+                            condition: device.condition,
+                            purpose: device.purpose,
+                            quantity: device.quantity || 1,
+                          })),
+                        })
+                      }}
+                      disabled={isSavingDetails}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Iptal
+                    </Button>
+                    <Button type="button" size="sm" onClick={saveDetails} disabled={isSavingDetails}>
+                      <Save className="mr-2 h-4 w-4" />
+                      {isSavingDetails ? 'Kaydediliyor...' : 'Kaydet'}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setIsEditingDetails(true)}>
+                    Duzenle
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -312,23 +390,14 @@ export default function CargoDetailPage({ params }: PageProps) {
                     <Truck className="h-4 w-4" />
                     Kargo Şirketi
                   </p>
-                  <p className="font-medium">{cargo.cargoCompany}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Hedef
-                  </p>
-                  <p className="font-medium">{getDestinationText(cargo.destination)}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Teslimat Adresi
-                  </p>
-                  <p className="font-medium">{cargo.destinationAddress}</p>
+                  {isEditingDetails ? (
+                    <Input
+                      value={detailsForm.cargoCompany}
+                      onChange={(event) => setDetailsForm((prev) => ({ ...prev, cargoCompany: event.target.value }))}
+                    />
+                  ) : (
+                    <p className="font-medium">{getCargoCompanyDisplay()}</p>
+                  )}
                 </div>
               </div>
 
@@ -336,30 +405,122 @@ export default function CargoDetailPage({ params }: PageProps) {
                 <div>
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Gönderim Tarihi
+                    Kayit Tarihi
                   </p>
-                  <p className="font-medium">
-                    {cargo.sentDate ? formatDate(cargo.sentDate) : 'Henüz gönderilmedi'}
-                  </p>
+                  <p className="font-medium">{formatDate(cargo.createdAt)}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Gonderim Tarihi
+                  </p>
+                  {isEditingDetails ? (
+                    <Input
+                      type="datetime-local"
+                      value={detailsForm.sentDate}
+                      onChange={(event) => setDetailsForm((prev) => ({ ...prev, sentDate: event.target.value }))}
+                    />
+                  ) : (
+                    <p className="font-medium">{cargo.sentDate ? formatDate(cargo.sentDate) : 'Henüz gönderilmedi'}</p>
+                  )}
+                </div>
+              </div>
 
-                {cargo.deliveredDate && (
-                  <div>
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Teslim Tarihi
-                    </p>
-                    <p className="font-medium">{formatDate(cargo.deliveredDate)}</p>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Gelen Cihaz Bilgileri (Marka / Model / Seri No)</p>
+                <div className="space-y-3">
+                  {(isEditingDetails ? detailsForm.devices : cargo.devices).map((device, index) => (
+                    <div key={device.id || `${device.serialNumber}-${index}`} className="grid gap-2 md:grid-cols-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Marka</p>
+                        {isEditingDetails ? (
+                          <Input
+                            value={detailsForm.devices[index]?.deviceName || ''}
+                            onChange={(event) =>
+                              setDetailsForm((prev) => {
+                                const next = [...prev.devices]
+                                next[index] = { ...next[index], deviceName: event.target.value }
+                                return { ...prev, devices: next }
+                              })
+                            }
+                          />
+                        ) : (
+                          <p className="font-medium">{device.deviceName || '-'}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Model</p>
+                        {isEditingDetails ? (
+                          <Input
+                            value={detailsForm.devices[index]?.model || ''}
+                            onChange={(event) =>
+                              setDetailsForm((prev) => {
+                                const next = [...prev.devices]
+                                next[index] = { ...next[index], model: event.target.value }
+                                return { ...prev, devices: next }
+                              })
+                            }
+                          />
+                        ) : (
+                          <p className="font-medium">{device.model || '-'}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Seri No</p>
+                        {isEditingDetails ? (
+                          <Input
+                            value={detailsForm.devices[index]?.serialNumber || ''}
+                            onChange={(event) =>
+                              setDetailsForm((prev) => {
+                                const next = [...prev.devices]
+                                next[index] = { ...next[index], serialNumber: event.target.value }
+                                return { ...prev, devices: next }
+                              })
+                            }
+                          />
+                        ) : (
+                          <p className="font-medium">{device.serialNumber || '-'}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Ariza Bildirimi</p>
+                {cargo.incomingFlow?.deviceFaults && cargo.incomingFlow.deviceFaults.length > 0 ? (
+                  <div className="space-y-2">
+                    {cargo.incomingFlow.deviceFaults.map((fault, idx) => (
+                      <div key={`${fault.serialNumber}-${idx}`} className="rounded-md border p-2">
+                        <p className="text-sm font-medium">{fault.deviceName} / {fault.model} / {fault.serialNumber}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(fault.selectedFaultNames || []).length > 0 ? fault.selectedFaultNames.join(', ') : '-'}
+                        </p>
+                      </div>
+                    ))}
                   </div>
+                ) : (
+                  <p className="font-medium">
+                    {(cargo.incomingFlow?.selectedFaultNames || []).length > 0
+                      ? cargo.incomingFlow?.selectedFaultNames?.join(', ')
+                      : 'Ariza bilgisi yok'}
+                  </p>
                 )}
               </div>
 
-              {cargo.notes && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Notlar</p>
-                  <p className="font-medium whitespace-pre-wrap">{cargo.notes}</p>
-                </div>
-              )}
+              <div>
+                <p className="text-sm text-muted-foreground">Ek Notlar</p>
+                {isEditingDetails ? (
+                  <Textarea
+                    value={detailsForm.notes}
+                    onChange={(event) => setDetailsForm((prev) => ({ ...prev, notes: event.target.value }))}
+                    rows={4}
+                  />
+                ) : (
+                  <p className="font-medium whitespace-pre-wrap">{cargo.notes || '-'}</p>
+                )}
+              </div>
               {cargo.vendorTracking ? (
                 <div>
                   <p className="text-sm text-muted-foreground">Workflow</p>
@@ -373,74 +534,13 @@ export default function CargoDetailPage({ params }: PageProps) {
                   <p className="text-sm text-muted-foreground">Gelen Kargo Akis Bilgisi</p>
                   <p className="font-medium">Kanal: {getIncomingChannelText(cargo.incomingFlow.channel)}</p>
                   <p className="text-sm">Firma/Sube: {cargo.incomingFlow.companyName} / {cargo.incomingFlow.branchName}</p>
+                  {cargo.incomingFlow.carrierPersonnelName ? (
+                    <p className="text-sm">Cihazi Getiren Personel: {cargo.incomingFlow.carrierPersonnelName}</p>
+                  ) : null}
                   <p className="text-sm">Ariza Sayisi: {cargo.incomingFlow.selectedFaultNames?.length || 0}</p>
                   <p className="text-sm">Kozmetik: {cargo.incomingFlow.cosmeticState === 'damaged_in_shipping' ? 'Kargodan Hasarli Geldi' : 'Normal'}</p>
                 </div>
               ) : null}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="devices" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Kargodaki Cihazlar
-              </CardTitle>
-              <CardDescription>
-                Toplam {cargo.devices.length} cihaz
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {cargo.devices.map((device) => (
-                  <div
-                    key={device.id}
-                    className="p-4 border rounded-lg space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{device.deviceName}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {device.model} - S/N: {device.serialNumber}
-                        </p>
-                      </div>
-                      <Badge variant="outline">
-                        {device.quantity}x
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Durum:</span>{' '}
-                        <span className="font-medium">{getConditionText(device.condition)}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Amaç:</span>{' '}
-                        <span className="font-medium">{getPurposeText(device.purpose)}</span>
-                      </div>
-                    </div>
-                    {device.repairTicket ? (
-                      <div className="flex items-center gap-2 pt-1">
-                        <Badge variant={device.repairTicket.status === 'open' ? 'destructive' : 'default'}>
-                          {device.repairTicket.status === 'open' ? 'Tamirde' : 'Tamir Tamamlandi'}
-                        </Badge>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="h-auto p-0"
-                          onClick={() => router.push(`/dashboard/repairs/${device.repairTicket?.id}`)}
-                        >
-                          {device.repairTicket.repairNumber}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-muted-foreground pt-1">Bu cihaz icin tamir ticketi yok.</div>
-                    )}
-                  </div>
-                ))}
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -482,6 +582,35 @@ export default function CargoDetailPage({ params }: PageProps) {
                     {item.note && <div className="text-sm">Not: {item.note}</div>}
                   </div>
                 ))}
+                <div className="pt-2">
+                  <div className="text-sm font-medium mb-2">Cihaz Servis ve Depo Gecmisi (Seri No Bazli)</div>
+                  {historyLoading ? (
+                    <div className="text-sm text-muted-foreground">Gecmis hareketler yukleniyor...</div>
+                  ) : deviceHistoryGroups.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">Bu kayitta seri no bazli gecmis bulunamadi.</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {deviceHistoryGroups.map((group) => (
+                        <div key={group.serialNumber} className="rounded-md border p-3">
+                          <p className="text-sm font-semibold">Seri No: {group.serialNumber}</p>
+                          {group.items.length === 0 ? (
+                            <p className="text-xs text-muted-foreground mt-2">Hareket kaydi yok.</p>
+                          ) : (
+                            <div className="mt-2 space-y-2">
+                              {group.items.map((entry, index) => (
+                                <div key={`${group.serialNumber}-${entry.date}-${index}`} className="rounded border p-2">
+                                  <div className="text-sm font-medium">{entry.title}</div>
+                                  <div className="text-xs text-muted-foreground">{new Date(entry.date).toLocaleString('tr-TR')}</div>
+                                  <div className="text-sm">{entry.details}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

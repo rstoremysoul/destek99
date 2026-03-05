@@ -141,6 +141,8 @@ export interface CargoTracking {
     companyName: string
     branchId: string
     branchName: string
+    carrierPersonnelId?: string
+    carrierPersonnelName?: string
     selectedFaultIds: string[]
     selectedFaultNames: string[]
     deviceFaults?: Array<{
@@ -148,6 +150,7 @@ export interface CargoTracking {
       deviceName: string
       model: string
       serialNumber: string
+      isConsignment?: boolean
       selectedFaultIds: string[]
       selectedFaultNames: string[]
     }>
@@ -322,6 +325,7 @@ export interface VendorProduct {
   productName: string
   model: string
   serialNumber: string
+  isConsignment?: boolean
   businessName: string
   companyId: string
   currentStatus: 'at_vendor' | 'in_testing' | 'in_transit' | 'completed' | 'returned'

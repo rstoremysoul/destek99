@@ -5,6 +5,7 @@ export type SystemWarehouseKey =
   | 'EQUIVALENT_DEVICES'
   | 'TECHNICAL_SERVICE'
   | 'VENDOR_TRACKING'
+  | 'CONSIGNMENT_TRACKING'
 
 type MinimalLocationClient = {
   location: {
@@ -43,6 +44,12 @@ export const SYSTEM_WAREHOUSES: Array<{
     name: 'Tedarikci Takibi Deposu',
     type: LocationType.SUPPLIER,
     address: 'Sabit sistem deposu - Tedarikci akis noktasi',
+  },
+  {
+    key: 'CONSIGNMENT_TRACKING',
+    name: 'Konsinye Depo',
+    type: LocationType.CONSIGNMENT,
+    address: 'Sabit sistem deposu - Konsinye akis noktasi',
   },
 ]
 

@@ -2,13 +2,29 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '../../../lib/db'
 import { VendorProductStatus } from '@prisma/client'
-import { parseVendorWorkflowMeta } from '@/lib/vendor-workflow'
+
+async function resolveConsignmentFlag(model: unknown, brandOrDeviceType: unknown) {
+  const modelName = String(model || '').trim()
+  const brandName = String(brandOrDeviceType || '').trim()
+  if (!modelName || !brandName) return false
+
+  const match = await db.deviceModel.findFirst({
+    where: {
+      name: modelName,
+      brand: { name: brandName },
+    },
+    select: { isConsignment: true },
+  })
+
+  return Boolean(match?.isConsignment)
+}
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const vendor = searchParams.get('vendor')
     const status = searchParams.get('status')
+    const consignment = searchParams.get('consignment')
 
     let whereClause: any = {}
 
@@ -25,6 +41,12 @@ export async function GET(request: NextRequest) {
         'returned': VendorProductStatus.RETURNED,
       }
       whereClause.currentStatus = statusMap[status.toLowerCase()] || status.toUpperCase()
+    }
+
+    if (consignment === 'true') {
+      whereClause.isConsignment = true
+    } else if (consignment === 'false') {
+      whereClause.isConsignment = false
     }
 
     const products = await db.vendorProduct.findMany({
@@ -65,6 +87,10 @@ export async function POST(request: NextRequest) {
         deviceName: body.deviceName,
         model: body.model || '',
         serialNumber: body.serialNumber || '',
+        isConsignment:
+          typeof body?.isConsignment === 'boolean'
+            ? body.isConsignment
+            : await resolveConsignmentFlag(body?.model, body?.brand || body?.deviceName),
         brand: body.brand,
         problemDescription: body.problemDescription || '',
         currentStatus: statusMap[body.status?.toLowerCase()] || VendorProductStatus.AT_VENDOR,
@@ -110,22 +136,26 @@ export async function PUT(request: NextRequest) {
     }
 
     const nextStatus = statusMap[data.status?.toLowerCase()] || data.currentStatus
-    const statusText = String(nextStatus || '').toUpperCase()
-    if (statusText === 'COMPLETED') {
-      const existing = await db.vendorProduct.findUnique({
-        where: { id: String(id) },
-        select: { notes: true },
-      })
-      const notesCandidate = typeof data.notes === 'string' ? data.notes : (existing?.notes || '')
-      const workflow = parseVendorWorkflowMeta(notesCandidate)
-      if (!workflow.meta?.repairId) {
-        return NextResponse.json(
-          { error: 'Tedarikci kaydi teknik servise cekilmeden tamamlanamaz' },
-          { status: 400 }
-        )
-      }
-    }
-
+    const existingProduct = await db.vendorProduct.findUnique({
+      where: { id: String(id) },
+      select: {
+        isConsignment: true,
+        model: true,
+        brand: true,
+        deviceName: true,
+      },
+    })
+    const nextIsConsignment =
+      typeof data?.isConsignment === 'boolean'
+        ? data.isConsignment
+        : (
+            existingProduct
+              ? await resolveConsignmentFlag(
+                  data?.model ?? existingProduct.model,
+                  data?.brand ?? data?.deviceName ?? existingProduct.brand ?? existingProduct.deviceName
+                )
+              : await resolveConsignmentFlag(data?.model, data?.brand || data?.deviceName)
+          )
     const product = await db.vendorProduct.update({
       where: { id: String(id) },
       data: {
@@ -133,6 +163,7 @@ export async function PUT(request: NextRequest) {
         deviceName: data.deviceName,
         model: data.model,
         serialNumber: data.serialNumber,
+        isConsignment: nextIsConsignment,
         brand: data.brand,
         problemDescription: data.problemDescription,
         currentStatus: nextStatus,

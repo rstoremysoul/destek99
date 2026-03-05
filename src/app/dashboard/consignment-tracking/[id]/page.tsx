@@ -68,7 +68,7 @@ export default function VendorProductDetailPage({ params }: PageProps) {
         }
         setProduct(mappedData)
       } else if (response.status === 404) {
-        router.push('/dashboard/vendor-tracking')
+        router.push('/dashboard/consignment-tracking')
       }
     } catch (error) {
       console.error('Error fetching vendor product:', error)
@@ -149,7 +149,7 @@ export default function VendorProductDetailPage({ params }: PageProps) {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{product.productName}</h1>
             <p className="text-muted-foreground">
-              {product.model} - S/N: {product.serialNumber}
+              Konsinye Kaydi - {product.model} - S/N: {product.serialNumber}
             </p>
           </div>
 

@@ -230,6 +230,7 @@ model VendorProduct {
   deviceName        String                 @map("device_name")
   model             String
   serialNumber      String                 @map("serial_number")
+  isConsignment     Boolean                @default(false) @map("is_consignment")
   brand             String?
   problemDescription String                @map("problem_description")
   currentStatus     VendorProductStatus    @default(AT_VENDOR) @map("current_status")
@@ -308,6 +309,7 @@ model DeviceModel {
   brandId   String      @map("brand_id")
   brand     DeviceBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
   name      String
+  isConsignment Boolean @default(false) @map("is_consignment")
   active    Boolean     @default(true)
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
@@ -366,6 +368,16 @@ model IncomingCargoFaultOption {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("incoming_cargo_fault_options")
+}
+
+model IncomingCargoCarrierPersonnel {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("incoming_cargo_carrier_personnel")
 }
 
 // Equivalent Device Model

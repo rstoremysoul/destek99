@@ -49,6 +49,23 @@ function mapLocationTypeToEquivalentLocation(
   }
 }
 
+function normalizeText(value?: string | null) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+}
+
+function isCustomerTrackingTarget(location: { type: string | null; name: string }) {
+  if (location.type === 'CUSTOMER') return true
+  const normalizedName = normalizeText(location.name)
+  return normalizedName.includes('musteri depo') || normalizedName.includes('musteri')
+}
+
 async function ensureCompanyAndCustomer(tx: any, cargo: any) {
   const incomingMeta = parseIncomingCargoFlowMeta(cargo.notes || '').meta
   const companyName = String(
@@ -134,7 +151,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const newLocation = mapLocationTypeToEquivalentLocation(targetLocation.type)
+    const isCustomerTarget = isCustomerTrackingTarget({
+      type: targetLocation.type,
+      name: targetLocation.name,
+    })
+    const newLocation = isCustomerTarget
+      ? 'AT_CUSTOMER'
+      : mapLocationTypeToEquivalentLocation(targetLocation.type)
     const isSupplierTarget = targetLocation.type === 'SUPPLIER'
     const systemTargetKey = getSystemWarehouseKeyByName(targetLocation.name)
 
@@ -144,6 +167,7 @@ export async function POST(request: NextRequest) {
       const vendorProductIds: string[] = []
       let vendorId: string | null = null
       let vendorName: string | null = null
+      const consignmentCache = new Map<string, boolean>()
       let createdRepairCount = 0
       let existingRepairCount = 0
       let createdTechnicalServiceCount = 0
@@ -172,7 +196,7 @@ export async function POST(request: NextRequest) {
               serialNumber: device.serialNumber,
               locationId: targetLocationId,
               currentLocation: newLocation,
-              status: 'AVAILABLE',
+              status: isCustomerTarget ? 'IN_USE' : 'AVAILABLE',
               recordStatus: 'OPEN',
               condition: 'GOOD',
               notes: `Kargo ${cargo.trackingNumber} sevk isleminde otomatik olusturuldu`,
@@ -187,7 +211,7 @@ export async function POST(request: NextRequest) {
           data: {
             locationId: targetLocationId,
             currentLocation: newLocation,
-            status: 'AVAILABLE',
+            status: isCustomerTarget ? 'IN_USE' : 'AVAILABLE',
           },
         })
 
@@ -198,6 +222,7 @@ export async function POST(request: NextRequest) {
             newLocation,
             previousLocationId: equivalentDevice.locationId,
             newLocationId: targetLocationId,
+            newStatus: isCustomerTarget ? 'IN_USE' : 'AVAILABLE',
             assignedToName: targetLocation.name,
             notes: notes || `Kargo ${cargo.trackingNumber} uzerinden sevk edildi`,
             changedBy: 'USER',
@@ -292,6 +317,24 @@ export async function POST(request: NextRequest) {
         }
 
         if (isSupplierTarget) {
+          const consignmentKey = `${String(device.deviceName || '').trim()}::${String(device.model || '').trim()}`
+          let isConsignment = false
+          if (consignmentCache.has(consignmentKey)) {
+            isConsignment = Boolean(consignmentCache.get(consignmentKey))
+          } else {
+            const modelDef = await tx.deviceModel.findFirst({
+              where: {
+                name: String(device.model || '').trim(),
+                brand: {
+                  name: String(device.deviceName || '').trim(),
+                },
+              },
+              select: { isConsignment: true },
+            })
+            isConsignment = Boolean(modelDef?.isConsignment)
+            consignmentCache.set(consignmentKey, isConsignment)
+          }
+
           let vendor = await tx.vendor.findFirst({
             where: { name: targetLocation.name },
             select: { id: true, name: true },
@@ -320,6 +363,7 @@ export async function POST(request: NextRequest) {
               deviceName: device.deviceName || 'Bilinmeyen Cihaz',
               model: device.model || '-',
               serialNumber: device.serialNumber,
+              isConsignment,
               problemDescription: `Kargo sevkinden olusan tedarikci kaydi (${cargo.trackingNumber})`,
               currentStatus: 'AT_VENDOR',
               sentDate: new Date(),
@@ -423,6 +467,9 @@ export async function POST(request: NextRequest) {
     }
     if (results.createdTechnicalServiceCount > 0) {
       extraNotes.push(`${results.createdTechnicalServiceCount} teknik servis kaydi acildi`)
+    }
+    if (isCustomerTarget) {
+      extraNotes.push('musteri cihaz takip kaydi guncellendi')
     }
 
     const baseMessage = results.vendorTransfer

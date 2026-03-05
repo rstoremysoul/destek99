@@ -2,8 +2,13 @@
 import { prisma } from '../../../lib/prisma'
 import { CargoType, CargoStatus, CargoDestination, DeviceCondition, CargoPurpose, Prisma } from '@prisma/client'
 import { appendCargoRepairHistory, parseCargoRepairMeta } from '@/lib/cargo-repair'
+import { parseIncomingCargoFlowMeta } from '@/lib/incoming-cargo-flow'
+import { ensureSystemWarehouses } from '@/lib/system-warehouses'
+import { upsertCargoVendorMeta } from '@/lib/cargo-vendor-workflow'
 
 const DEFAULT_HQ_NAME = 'Merkez Ofis Deposu'
+const DEFAULT_VENDOR_WAREHOUSE_NAME = 'Tedarikci Takibi Deposu'
+const DEFAULT_CONSIGNMENT_WAREHOUSE_NAME = 'Konsinye Depo'
 
 function generateEquivalentDeviceNumber() {
   return `INC-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 900 + 100)}`
@@ -48,6 +53,54 @@ async function getHeadquartersLocation() {
   })
 
   return hq
+}
+
+async function getVendorTrackingLocation() {
+  const location = await prisma.location.findFirst({
+    where: {
+      OR: [
+        { name: DEFAULT_VENDOR_WAREHOUSE_NAME },
+        { type: 'SUPPLIER' },
+      ],
+      active: true,
+    },
+    orderBy: { name: 'asc' },
+  })
+
+  if (location) return location
+
+  return prisma.location.create({
+    data: {
+      name: DEFAULT_VENDOR_WAREHOUSE_NAME,
+      type: 'SUPPLIER',
+      address: 'Otomatik Olusturuldu',
+      active: true,
+    },
+  })
+}
+
+async function getConsignmentLocation() {
+  const location = await prisma.location.findFirst({
+    where: {
+      OR: [
+        { name: DEFAULT_CONSIGNMENT_WAREHOUSE_NAME },
+        { type: 'CONSIGNMENT' },
+      ],
+      active: true,
+    },
+    orderBy: { name: 'asc' },
+  })
+
+  if (location) return location
+
+  return prisma.location.create({
+    data: {
+      name: DEFAULT_CONSIGNMENT_WAREHOUSE_NAME,
+      type: 'CONSIGNMENT',
+      address: 'Otomatik Olusturuldu',
+      active: true,
+    },
+  })
 }
 
 // GET all cargo trackings
@@ -284,6 +337,16 @@ export async function POST(request: NextRequest) {
 
     const resolvedType = typeMap[type?.toLowerCase()] || CargoType.OUTGOING
     const isIncoming = resolvedType === CargoType.INCOMING
+    const incomingMeta = parseIncomingCargoFlowMeta(typeof notes === 'string' ? notes : '').meta
+    const isSupplierIncoming = isIncoming && incomingMeta?.channel === 'supplier'
+
+    if (isIncoming) {
+      await ensureSystemWarehouses(prisma as any)
+    }
+
+    const supplierTargetLocation = isSupplierIncoming
+      ? await getVendorTrackingLocation()
+      : null
 
     const createData: any = {
       trackingNumber: normalizedTrackingNumber,
@@ -291,14 +354,14 @@ export async function POST(request: NextRequest) {
       status: statusMap[status?.toLowerCase()] || CargoStatus.IN_TRANSIT,
       sender,
       receiver,
-      cargoCompany: cargoCompany || '',
+      cargoCompany: isSupplierIncoming ? 'Tedarikci' : (cargoCompany || ''),
       sentDate: sentDate ? new Date(sentDate) : null,
       deliveredDate: deliveredDate ? new Date(deliveredDate) : null,
       destination: isIncoming
-        ? CargoDestination.HEADQUARTERS
+        ? (isSupplierIncoming ? CargoDestination.DISTRIBUTOR : CargoDestination.HEADQUARTERS)
         : (destinationMap[destination?.toLowerCase()] || CargoDestination.CUSTOMER),
       destinationAddress: isIncoming
-        ? DEFAULT_HQ_NAME
+        ? (isSupplierIncoming ? (supplierTargetLocation?.name || DEFAULT_VENDOR_WAREHOUSE_NAME) : DEFAULT_HQ_NAME)
         : destinationAddress,
       notes,
       devices: {
@@ -357,78 +420,169 @@ export async function POST(request: NextRequest) {
     // --- AUTOMATIC WAREHOUSE ASSIGNMENT FOR INCOMING CARGO ---
     if (resolvedType === CargoType.INCOMING) {
       try {
-        // Gelen kargo is kurali: hedef depo her zaman Merkez Ofis.
-        let targetLocation = await getHeadquartersLocation();
-        if (!targetLocation) {
-          targetLocation = await prisma.location.create({
-            data: {
-              name: DEFAULT_HQ_NAME,
-              type: 'HEADQUARTERS',
-              address: 'Otomatik Oluşturuldu',
-              active: true,
-            }
-          })
+        let targetLocation = null as any
+        let consignmentLocation = null as any
+        if (isSupplierIncoming) {
+          targetLocation = supplierTargetLocation || await getVendorTrackingLocation()
+          consignmentLocation = await getConsignmentLocation()
+        } else {
+          targetLocation = await getHeadquartersLocation()
+          if (!targetLocation) {
+            targetLocation = await prisma.location.create({
+              data: {
+                name: DEFAULT_HQ_NAME,
+                type: 'HEADQUARTERS',
+                address: 'Otomatik Olusturuldu',
+                active: true,
+              },
+            })
+          }
         }
 
-        // 2. Move equivalent inventory devices by explicit id or serial match.
         let movedEquivalentCount = 0
         let createdEquivalentCount = 0
+        const vendorProductIds: string[] = []
+        const usedTargetLocationIds = new Set<string>()
+        const usedTargetLocationNames = new Set<string>()
+        const vendorName = String(incomingMeta?.companyName || sender || 'Tedarikci').trim() || 'Tedarikci'
+        let vendorId: string | null = null
 
         for (const device of deviceList) {
-          if (!device.serialNumber || device.serialNumber.length < 3) continue;
+          if (!device.serialNumber || device.serialNumber.length < 3) continue
 
           let existingDevice = null
           if (device.equivalentDeviceId) {
             existingDevice = await prisma.equivalentDevice.findUnique({
-              where: { id: device.equivalentDeviceId }
+              where: { id: device.equivalentDeviceId },
             })
           }
 
           if (!existingDevice) {
             existingDevice = await prisma.equivalentDevice.findUnique({
-              where: { serialNumber: device.serialNumber }
+              where: { serialNumber: device.serialNumber },
             })
           }
 
+          let deviceTargetLocation = targetLocation
+
+          if (isSupplierIncoming) {
+            const modelDef = await prisma.deviceModel.findFirst({
+              where: {
+                name: String(device.model || '').trim(),
+                brand: {
+                  name: String(device.deviceName || '').trim(),
+                },
+              },
+              select: { isConsignment: true },
+            })
+
+            const consignmentOverride = incomingMeta?.deviceFaults?.find((f: any) => {
+              const sameSerial = String(f?.serialNumber || '').trim() === String(device.serialNumber || '').trim()
+              const sameModel = String(f?.model || '').trim() === String(device.model || '').trim()
+              return sameSerial && sameModel
+            })
+
+            const isConsignmentDevice =
+              typeof consignmentOverride?.isConsignment === 'boolean'
+                ? consignmentOverride.isConsignment
+                : Boolean(modelDef?.isConsignment)
+
+            deviceTargetLocation = isConsignmentDevice ? (consignmentLocation || targetLocation) : targetLocation
+
+            if (!vendorId) {
+              const existingVendor = await prisma.vendor.findFirst({
+                where: { name: vendorName },
+                select: { id: true },
+              })
+              if (existingVendor) {
+                vendorId = existingVendor.id
+              } else {
+                const createdVendor = await prisma.vendor.create({
+                  data: {
+                    name: vendorName,
+                    type: 'DISTRIBUTOR',
+                    active: true,
+                    notes: `Gelen kargo supplier kanalindan otomatik olusturuldu (${trackingNumber})`,
+                  },
+                  select: { id: true },
+                })
+                vendorId = createdVendor.id
+              }
+            }
+
+            const vendorProduct = await prisma.vendorProduct.create({
+              data: {
+                vendorId,
+                deviceName: String(device.deviceName || 'Bilinmeyen Cihaz'),
+                model: String(device.model || '-'),
+                serialNumber: String(device.serialNumber),
+                isConsignment: isConsignmentDevice,
+                problemDescription: `Supplier kanalindan gelen cihaz kaydi (${trackingNumber})`,
+                currentStatus: 'AT_VENDOR',
+                sentDate: new Date(),
+                notes: [
+                  `[CARGO:${cargo.id}]`,
+                  `[CARGO_TRACKING:${trackingNumber}]`,
+                  `Kaynak kanal: supplier`,
+                  `Depo: ${deviceTargetLocation.name}`,
+                ].join('\n'),
+              },
+              select: { id: true },
+            })
+
+            vendorProductIds.push(vendorProduct.id)
+
+            await prisma.vendorProductStatusHistory.create({
+              data: {
+                productId: vendorProduct.id,
+                status: 'AT_VENDOR',
+                statusDate: new Date(),
+                notes: `Supplier kanalinda gelen kargodan otomatik olusturuldu (${trackingNumber})`,
+                updatedBy: 'SYSTEM',
+                updatedByName: 'Sistem',
+              },
+            })
+          }
+
+          usedTargetLocationIds.add(String(deviceTargetLocation.id))
+          usedTargetLocationNames.add(String(deviceTargetLocation.name))
+
           if (existingDevice) {
-            // Update existing device location
             await prisma.equivalentDevice.update({
               where: { id: existingDevice.id },
               data: {
-                location: { connect: { id: targetLocation.id } },
+                location: { connect: { id: deviceTargetLocation.id } },
                 currentLocation: 'IN_WAREHOUSE',
                 status: 'AVAILABLE',
-              }
+              },
             })
 
-            // Track History
             await prisma.equivalentDeviceHistory.create({
               data: {
                 device: { connect: { id: existingDevice.id } },
                 previousLocation: existingDevice.currentLocation,
                 newLocation: 'IN_WAREHOUSE',
                 previousLocationId: existingDevice.locationId,
-                newLocationId: targetLocation.id,
-                assignedToName: `Kargo ile Giriş (${trackingNumber})`,
-                notes: `Gelen Kargo: ${trackingNumber} - Gönderen: ${sender} - Depo: ${targetLocation.name}`,
+                newLocationId: deviceTargetLocation.id,
+                assignedToName: `Kargo ile Giris (${trackingNumber})`,
+                notes: `Gelen Kargo: ${trackingNumber} - Gonderen: ${sender} - Depo: ${deviceTargetLocation.name}`,
                 changedBy: 'SYSTEM',
-                changedByName: 'Sistem (Otomatik Kargo Girişi)',
-              }
+                changedByName: 'Sistem (Otomatik Kargo Girisi)',
+              },
             })
 
             movedEquivalentCount++
           } else {
-            // Envanterde yoksa gelen kargoda otomatik olustur.
             let createdDevice = null as any
             try {
               createdDevice = await prisma.equivalentDevice.create({
                 data: {
                   deviceNumber: generateEquivalentDeviceNumber(),
                   deviceName: String(device.deviceName || 'Bilinmeyen Cihaz'),
-                  brand: 'GENEL',
+                  brand: String(device.deviceName || 'GENEL'),
                   model: String(device.model || '-'),
                   serialNumber: String(device.serialNumber),
-                  locationId: targetLocation.id,
+                  locationId: deviceTargetLocation.id,
                   currentLocation: 'IN_WAREHOUSE',
                   status: 'AVAILABLE',
                   recordStatus: 'OPEN',
@@ -439,9 +593,8 @@ export async function POST(request: NextRequest) {
                 },
               })
             } catch (createError) {
-              // Yaris kosulunda ayni seri daha once acilmissa tekrar bul.
               createdDevice = await prisma.equivalentDevice.findUnique({
-                where: { serialNumber: String(device.serialNumber) }
+                where: { serialNumber: String(device.serialNumber) },
               })
               if (!createdDevice) throw createError
             }
@@ -451,27 +604,55 @@ export async function POST(request: NextRequest) {
                 deviceId: createdDevice.id,
                 previousLocation: createdDevice.currentLocation || 'IN_WAREHOUSE',
                 newLocation: 'IN_WAREHOUSE',
-                previousLocationId: createdDevice.locationId || targetLocation.id,
-                newLocationId: targetLocation.id,
+                previousLocationId: createdDevice.locationId || deviceTargetLocation.id,
+                newLocationId: deviceTargetLocation.id,
                 assignedToName: `Kargo ile Giris (${trackingNumber})`,
-                notes: `Gelen Kargo: ${trackingNumber} - Gonderen: ${sender} - Depo: ${targetLocation.name} (otomatik olusturma)`,
+                notes: `Gelen Kargo: ${trackingNumber} - Gonderen: ${sender} - Depo: ${deviceTargetLocation.name} (otomatik olusturma)`,
                 changedBy: 'SYSTEM',
                 changedByName: 'Sistem (Otomatik Kargo Girisi)',
-              }
+              },
             })
 
             createdEquivalentCount++
           }
         }
 
+        if (isSupplierIncoming && vendorProductIds.length > 0) {
+          const locationNameForMeta = usedTargetLocationNames.size === 1
+            ? Array.from(usedTargetLocationNames)[0]
+            : Array.from(usedTargetLocationNames).join(' / ')
+          const locationIdForMeta = usedTargetLocationIds.size === 1
+            ? Array.from(usedTargetLocationIds)[0]
+            : (targetLocation?.id || '')
+          const updatedNotes = upsertCargoVendorMeta(cargo.notes || '', {
+            stage: 'vendor_tracking',
+            vendorId: vendorId || undefined,
+            vendorName,
+            vendorProductIds,
+            targetLocationId: locationIdForMeta,
+            targetLocationName: locationNameForMeta,
+            transferredAt: new Date().toISOString(),
+          })
+
+          const updatedCargo = await prisma.cargoTracking.update({
+            where: { id: cargo.id },
+            data: {
+              cargoCompany: 'Tedarikci',
+              destinationAddress: locationNameForMeta || targetLocation.name,
+              notes: updatedNotes,
+            },
+            include: { devices: true },
+          })
+          cargo = updatedCargo
+        }
+
         if (movedEquivalentCount > 0 || createdEquivalentCount > 0) {
           console.log(
-            `[cargo-incoming] tracking=${trackingNumber} movedEquivalent=${movedEquivalentCount} createdEquivalent=${createdEquivalentCount}`
+            `[cargo-incoming] tracking=${trackingNumber} movedEquivalent=${movedEquivalentCount} createdEquivalent=${createdEquivalentCount} supplierIncoming=${isSupplierIncoming}`
           )
         }
       } catch (err) {
         console.error('Error auto-assigning incoming cargo to warehouse:', err)
-        // Don't fail the request, just log error
       }
     }
     // ---------------------------------------------------------
@@ -506,5 +687,7 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+
 
 

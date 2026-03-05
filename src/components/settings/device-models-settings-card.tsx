@@ -16,6 +16,7 @@ type Brand = {
 type ModelRecord = {
   id: string
   name: string
+  isConsignment: boolean
   active: boolean
   brand: {
     id: string
@@ -28,6 +29,7 @@ export function DeviceModelsSettingsCard() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [models, setModels] = useState<ModelRecord[]>([])
   const [newModel, setNewModel] = useState('')
+  const [newModelConsignment, setNewModelConsignment] = useState<'normal' | 'consignment'>('normal')
   const [selectedBrandForModel, setSelectedBrandForModel] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -77,10 +79,11 @@ export function DeviceModelsSettingsCard() {
       const res = await fetch('/api/models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brand, name }),
+        body: JSON.stringify({ brand, name, isConsignment: newModelConsignment === 'consignment' }),
       })
       if (res.ok) {
         setNewModel('')
+        setNewModelConsignment('normal')
         await loadModels()
       }
     } catch (e) {
@@ -105,6 +108,21 @@ export function DeviceModelsSettingsCard() {
     }
   }
 
+  const toggleModelConsignment = async (model: ModelRecord) => {
+    try {
+      const res = await fetch(`/api/models/${model.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isConsignment: !model.isConsignment }),
+      })
+      if (res.ok) {
+        await loadModels()
+      }
+    } catch (e) {
+      console.error('Error updating model consignment flag:', e)
+    }
+  }
+
   const visibleModels = useMemo(() => {
     if (!selectedBrandForModel) return models
     return models.filter((m) => m.brand?.name === selectedBrandForModel)
@@ -116,7 +134,7 @@ export function DeviceModelsSettingsCard() {
         <CardTitle className="text-slate-100">Model Yonetimi</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-2 md:grid-cols-[260px_1fr_auto]">
+        <div className="grid gap-2 md:grid-cols-[220px_1fr_170px_auto]">
           <Select value={selectedBrandForModel} onValueChange={setSelectedBrandForModel}>
             <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
               <SelectValue placeholder="Cihaz turu secin" />
@@ -140,6 +158,16 @@ export function DeviceModelsSettingsCard() {
             className="border-slate-600/80 bg-slate-950/70 text-slate-100 placeholder:text-slate-400 focus-visible:border-cyan-400/60 focus-visible:ring-cyan-400/40"
           />
 
+          <Select value={newModelConsignment} onValueChange={(v: 'normal' | 'consignment') => setNewModelConsignment(v)}>
+            <SelectTrigger className="border-slate-600/80 bg-slate-950/70 text-slate-100 focus:ring-cyan-400/40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="consignment">Konsinye</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button
             onClick={addModel}
             disabled={loading || !selectedBrandForModel}
@@ -155,6 +183,7 @@ export function DeviceModelsSettingsCard() {
               <tr>
                 <th className="text-left p-3">Cihaz Turu</th>
                 <th className="text-left p-3">Model</th>
+                <th className="text-left p-3">Konsinye</th>
                 <th className="text-left p-3">Durum</th>
                 <th className="text-right p-3">Islemler</th>
               </tr>
@@ -165,25 +194,40 @@ export function DeviceModelsSettingsCard() {
                   <td className="p-3">{m.brand?.name || '-'}</td>
                   <td className="p-3">{m.name}</td>
                   <td className="p-3">
+                    <Badge variant={m.isConsignment ? 'default' : 'secondary'}>
+                      {m.isConsignment ? 'Evet' : 'Hayir'}
+                    </Badge>
+                  </td>
+                  <td className="p-3">
                     <Badge variant={m.active ? 'default' : 'secondary'}>
                       {m.active ? 'Aktif' : 'Pasif'}
                     </Badge>
                   </td>
                   <td className="p-3 text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleModelActive(m)}
-                      className="border-slate-600/80 bg-slate-900/40 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
-                    >
-                      {m.active ? 'Pasiflestir' : 'Aktiflestir'}
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleModelConsignment(m)}
+                        className="border-slate-600/80 bg-slate-900/40 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
+                      >
+                        {m.isConsignment ? 'Normal Yap' : 'Konsinye Yap'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleModelActive(m)}
+                        className="border-slate-600/80 bg-slate-900/40 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
+                      >
+                        {m.active ? 'Pasiflestir' : 'Aktiflestir'}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {visibleModels.length === 0 && (
                 <tr>
-                  <td className="p-3 text-slate-300" colSpan={4}>
+                  <td className="p-3 text-slate-300" colSpan={5}>
                     Bu cihaz turu icin model bulunamadi.
                   </td>
                 </tr>

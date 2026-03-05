@@ -6,6 +6,8 @@ export interface IncomingCargoFlowMeta {
   companyName: string
   branchId: string
   branchName: string
+  carrierPersonnelId?: string
+  carrierPersonnelName?: string
   selectedFaultIds: string[]
   selectedFaultNames: string[]
   deviceFaults?: Array<{
@@ -13,6 +15,7 @@ export interface IncomingCargoFlowMeta {
     deviceName: string
     model: string
     serialNumber: string
+    isConsignment?: boolean
     selectedFaultIds: string[]
     selectedFaultNames: string[]
   }>
@@ -46,6 +49,8 @@ export function parseIncomingCargoFlowMeta(notes?: string | null): {
         companyName: String(data?.companyName || ''),
         branchId: String(data?.branchId || ''),
         branchName: String(data?.branchName || ''),
+        carrierPersonnelId: String(data?.carrierPersonnelId || data?.carrierTechnicianId || ''),
+        carrierPersonnelName: String(data?.carrierPersonnelName || data?.carrierTechnicianName || ''),
         selectedFaultIds: Array.isArray(data?.selectedFaultIds) ? data.selectedFaultIds.map((x: unknown) => String(x)) : [],
         selectedFaultNames: Array.isArray(data?.selectedFaultNames) ? data.selectedFaultNames.map((x: unknown) => String(x)) : [],
         deviceFaults: Array.isArray(data?.deviceFaults)
@@ -54,6 +59,7 @@ export function parseIncomingCargoFlowMeta(notes?: string | null): {
               deviceName: String(item?.deviceName || ''),
               model: String(item?.model || ''),
               serialNumber: String(item?.serialNumber || ''),
+              isConsignment: Boolean(item?.isConsignment),
               selectedFaultIds: Array.isArray(item?.selectedFaultIds) ? item.selectedFaultIds.map((x: unknown) => String(x)) : [],
               selectedFaultNames: Array.isArray(item?.selectedFaultNames) ? item.selectedFaultNames.map((x: unknown) => String(x)) : [],
             }))

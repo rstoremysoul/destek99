@@ -207,6 +207,32 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
     }
   }
 
+  const parseCompanyBranchFromSender = (sender?: string) => {
+    const raw = String(sender || '')
+    const parts = raw.split('/').map((item) => item.trim()).filter(Boolean)
+    return {
+      company: parts[0] || raw || '-',
+      branch: parts[1] || '-',
+    }
+  }
+
+  const getIncomingCompanyText = (cargo: CargoTracking) => {
+    if (cargo.incomingFlow?.companyName) return cargo.incomingFlow.companyName
+    return parseCompanyBranchFromSender(cargo.sender).company
+  }
+
+  const getIncomingBranchText = (cargo: CargoTracking) => {
+    if (cargo.incomingFlow?.branchName) return cargo.incomingFlow.branchName
+    return parseCompanyBranchFromSender(cargo.sender).branch
+  }
+
+  const getIncomingCargoCompanyText = (cargo: CargoTracking) => {
+    const channel = cargo.incomingFlow?.channel
+    if (channel === 'on_site_service') return '-'
+    if (channel === 'supplier') return 'Tedarikci'
+    return cargo.cargoCompany || '-'
+  }
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('tr-TR', {
       day: '2-digit',
@@ -797,14 +823,28 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Takip No</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Tip</th>
+                  {!isIncomingGridView ? (
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Tip</th>
+                  ) : null}
+                  {isIncomingGridView ? (
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kanal</th>
+                  ) : null}
                   {!isIncomingGridView ? (
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Durum</th>
                   ) : null}
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kayıt</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Gönderen</th>
+                  {!isIncomingGridView ? (
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Gönderen</th>
+                  ) : null}
                   {!isIncomingGridView ? (
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Alıcı</th>
+                  ) : null}
+                  {isIncomingGridView ? (
+                    <>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Firma</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Sube</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Getiren Personel</th>
+                    </>
                   ) : null}
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Kargo Şirketi</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Hedef</th>
@@ -848,28 +888,32 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
                             Kaynak: Teknik Servis
                           </Badge>
                         ) : null}
-                        {cargo.incomingFlow?.channel ? (
-                          <Badge variant="outline" className="gap-1">
-                            Kanal: {getIncomingChannelText(cargo.incomingFlow.channel)}
-                          </Badge>
-                        ) : null}
                       </div>
                     </td>
-                    <td className="p-4 align-middle">
-                      <Badge variant="outline" className="gap-1">
-                        {cargo.type === 'incoming' ? (
-                          <>
-                            <ArrowDown className="h-3 w-3" />
-                            Gelen
-                          </>
-                        ) : (
-                          <>
-                            <ArrowUp className="h-3 w-3" />
-                            Giden
-                          </>
-                        )}
-                      </Badge>
-                    </td>
+                    {!isIncomingGridView ? (
+                      <td className="p-4 align-middle">
+                        <Badge variant="outline" className="gap-1">
+                          {cargo.type === 'incoming' ? (
+                            <>
+                              <ArrowDown className="h-3 w-3" />
+                              Gelen
+                            </>
+                          ) : (
+                            <>
+                              <ArrowUp className="h-3 w-3" />
+                              Giden
+                            </>
+                          )}
+                        </Badge>
+                      </td>
+                    ) : null}
+                    {isIncomingGridView ? (
+                      <td className="p-4 align-middle">
+                        {cargo.type === 'incoming'
+                          ? (getIncomingChannelText(cargo.incomingFlow?.channel) || '-')
+                          : '-'}
+                      </td>
+                    ) : null}
                     {!isIncomingGridView ? (
                       <td className="p-4 align-middle">
                         <Badge variant={getStatusColor(cargo.status)}>
@@ -886,16 +930,33 @@ export function CargoPage({ lockedView }: { lockedView?: 'incoming' | 'outgoing'
                         {getRecordStatusText(cargo.recordStatus)}
                       </Badge>
                     </td>
-                    <td className="p-4 align-middle">
-                      {truncateText(cargo.sender, 20)}
-                    </td>
+                    {!isIncomingGridView ? (
+                      <td className="p-4 align-middle">
+                        {truncateText(cargo.sender, 20)}
+                      </td>
+                    ) : null}
                     {!isIncomingGridView ? (
                       <td className="p-4 align-middle">
                         {cargo.type === 'incoming' ? '-' : truncateText(cargo.receiver, 20)}
                       </td>
                     ) : null}
+                    {isIncomingGridView ? (
+                      <>
+                        <td className="p-4 align-middle">
+                          {truncateText(getIncomingCompanyText(cargo), 22)}
+                        </td>
+                        <td className="p-4 align-middle">
+                          {truncateText(getIncomingBranchText(cargo), 22)}
+                        </td>
+                        <td className="p-4 align-middle">
+                          {cargo.incomingFlow?.channel === 'on_site_service'
+                            ? (cargo.incomingFlow?.carrierPersonnelName || '-')
+                            : '-'}
+                        </td>
+                      </>
+                    ) : null}
                     <td className="p-4 align-middle">
-                      {cargo.cargoCompany}
+                      {getIncomingCargoCompanyText(cargo)}
                     </td>
                     <td className="p-4 align-middle">
                       <div className="flex items-center gap-1">
